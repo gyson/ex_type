@@ -1,16 +1,19 @@
 defmodule ExType.Checker do
   @moduledoc false
 
-  alias ExType.Type
-  alias ExType.Typespec
-  alias ExType.Context
-  alias ExType.Unification
+  use ExType.Helper
 
   @spec eval(any(), Context.t()) :: {:ok, Type.t(), Context.t()} | {:error, any()}
 
-  # TODO, infer its type
-  def eval({:%{}, _, _args}, context) do
-    {:ok, %Type.Map{}, context}
+  def eval({:%{}, _, []}, context) do
+    {:ok, %Type.Map{key: %Type.Any{}, value: %Type.Any{}}, context}
+  end
+
+  def eval({:%{}, _, args}, context) when is_list(args) do
+    case eval(args, context) do
+      {:ok, %Type.List{type: %Type.Tuple{types: [left, right]}}, _} ->
+        {:ok, %Type.Map{key: left, value: right}, context}
+    end
   end
 
   # bitstring
@@ -131,7 +134,7 @@ defmodule ExType.Checker do
 
     unified_types =
       Typespec.from_beam_spec(module, name, length(args))
-      |> Enum.flat_map(fn {inputs, output, vars} ->
+      |> Enum.flat_map(fn {inputs, output, _vars} ->
         result =
           Enum.zip(inputs, args_types)
           |> Enum.reduce_while(context, fn {input, arg_type}, acc_context ->

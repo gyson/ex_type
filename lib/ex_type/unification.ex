@@ -1,18 +1,15 @@
+defmodule ExType.Unification.SpecError do
+  defstruct [:spec, :type, :context, :line]
+end
+
+defmodule ExType.Unification.PatternError do
+  defstruct [:pattern, :type, :context, :line]
+end
+
 defmodule ExType.Unification do
   @moduledoc false
 
   use ExType.Helper
-
-  alias ExType.Type
-  alias ExType.Context
-
-  defmodule PatternError do
-    defstruct [:pattern, :type, :context]
-  end
-
-  defmodule SpecError do
-    defstruct [:spec, :type, :context]
-  end
 
   @spec unify_pattern(any(), Type.t(), Context.t()) :: {:ok, any(), Context.t()} | {:error, any()}
 
@@ -110,25 +107,10 @@ defmodule ExType.Unification do
   end
 
   def unify_pattern(pattern, type, context) do
-    {:error, %PatternError{context: context, pattern: pattern, type: type}}
+    Helper.pattern_error(pattern, type, context)
   end
 
   @spec unify_spec(any(), Type.t(), Context.t()) :: {:ok, any(), Context.t()} | {:error, any()}
-
-  # TODO: handle line with https://github.com/elixir-lang/elixir/pull/8918
-  # type variable
-  def unify_spec({name, _, ctx}, type, context) when is_atom(name) and is_atom(ctx) do
-    unioned_type =
-      case context.type_variables do
-        %{^name => saved_type} ->
-          ExType.Checker.union_types([type, saved_type])
-
-        _ ->
-          type
-      end
-
-    {:ok, unioned_type, Context.update_type_variables(context, name, unioned_type)}
-  end
 
   # Tuple
 
@@ -182,7 +164,7 @@ defmodule ExType.Unification do
         {:ok, %Type.Atom{literal: true, value: atom}, context}
 
       _ ->
-        {:error, %SpecError{spec: atom, type: type, context: context}}
+        Helper.spec_error(atom, type, context)
     end
   end
 
@@ -225,7 +207,7 @@ defmodule ExType.Unification do
 
           {:error, _error} ->
             # TODO: link error
-            {:error, %SpecError{spec: spec, type: type, context: context}}
+            Helper.spec_error(inner, inner_type, context)
         end
 
       %Type.Any{} ->
@@ -234,8 +216,7 @@ defmodule ExType.Unification do
             {:ok, %Type.List{type: inner_type}, context}
 
           {:error, _error} ->
-            # TODO: link error
-            {:error, %SpecError{spec: spec, type: type, context: context}}
+            Helper.spec_error(spec, type, context)
         end
     end
   end
@@ -304,6 +285,47 @@ defmodule ExType.Unification do
     {:ok, type, context}
   end
 
+  # T.p(Enumerable.t(), x)
+  def unify_spec({{:., _, [T, :p]}, _, args}, type, context) do
+    case args do
+      [{{:., _, [protocol, :t]}, _, []}, right] ->
+        if Helper.is_protocol(protocol) do
+          name =
+            case type do
+              %Type.Atom{} ->
+                "Atom"
+
+              %Type.Number{kind: :integer} ->
+                "Integer"
+
+              %Type.Number{kind: :float} ->
+                "Float"
+
+              %Type.Tuple{} ->
+                "Tuple"
+
+              %Type.List{} ->
+                "List"
+
+              %Type.Map{} ->
+                "Map"
+            end
+
+          a = String.to_atom("Elixir.ExType.Typespec.#{protocol}.#{name}")
+
+          case ExType.Typespec.from_beam_type(a, :t, 1) do
+            {:ok, {{:., _, [T, :impl]}, _, [l, r]}} ->
+              {:ok, _, new_context} = unify_spec(l, type, context)
+              {:ok, tt, _} = unify_spec(r, %Type.Any{}, new_context)
+              {:ok, _, context} = unify_spec(right, tt, context)
+              {:ok, type, context}
+          end
+        else
+          {:error, "#{protocol} is not protocol"}
+        end
+    end
+  end
+
   # support remote type
   def unify_spec({{:., _, [module, name]}, _, []}, type, context)
       when is_atom(module) and is_atom(name) do
@@ -331,7 +353,32 @@ defmodule ExType.Unification do
     end
   end
 
+  def unify_spec({:%{}, _, [{{:required, _, [left]}, right}]}, type, context) do
+    case type do
+      %Type.Map{key: key, value: value} ->
+        {:ok, _, context} = unify_spec(left, key, context)
+        {:ok, _, context} = unify_spec(right, value, context)
+        {:ok, type, context}
+    end
+  end
+
+  # TODO: handle line with https://github.com/elixir-lang/elixir/pull/8918
+  # type variable
+  def unify_spec({name, _, ctx}, type, context)
+      when is_atom(name) and (is_atom(ctx) or ctx == []) do
+    unioned_type =
+      case context.type_variables do
+        %{^name => saved_type} ->
+          ExType.Checker.union_types([type, saved_type])
+
+        _ ->
+          type
+      end
+
+    {:ok, unioned_type, Context.update_type_variables(context, name, unioned_type)}
+  end
+
   def unify_spec(spec, type, context) do
-    {:error, {:unify_spec_not_match, context, spec, type}}
+    Helper.spec_error(spec, type, context)
   end
 end

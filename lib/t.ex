@@ -15,6 +15,12 @@ defmodule T do
   # @type t :: T.impl(%{k => v}, {k, v})
   @type impl(x, y) :: any() | x | y
 
+  # usage: T.opaque()
+  @type opaque() :: any()
+
+  # usage: T.opaque(x) or T.opaque({a, b, c})
+  @type opaque(x) :: any() | x
+
   # T.p(Enumerable.t, x)
   # equvalent to Enumerable.t(x)
   # shortcut for protocol
@@ -54,7 +60,20 @@ defmodule T do
       T.inspect {x, y}
 
   """
-  defmacro inspect(x) do
+  defmacro inspect(x, _opts \\ []) do
     quote(do: unquote(x))
+  end
+
+  @doc """
+  Assert type while doing type checking.
+
+  ## Example
+
+      x = 10
+      T.assert x == integer()
+
+  """
+  defmacro assert(_expr, _message \\ "") do
+    quote(do: nil)
   end
 end

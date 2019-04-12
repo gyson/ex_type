@@ -1,15 +1,18 @@
 defmodule ExType.Example.Foo do
   use T
 
-  @spec hello(integer(), integer()) :: integer()
+  @spec hello() :: any()
 
-  def hello(x, y) do
-    [x, y, 10]
-    |> Enum.map(fn x ->
-      x + 1
+  def hello() do
+    %{1 => 2, 3 => 4}
+    |> Enum.map(fn {a, b} ->
+      a + b
     end)
-    |> Enum.reduce(1, fn x, acc ->
-      x + acc
+    |> Enum.flat_map(fn k ->
+      [k, k]
+    end)
+    |> Enum.reduce(1, fn x, y ->
+      x + y
     end)
   end
 end

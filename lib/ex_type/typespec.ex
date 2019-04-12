@@ -1,17 +1,105 @@
 defmodule ExType.Typespec do
   @moduledoc false
 
+  use ExType.Helper
+
+  defmacro deftypespec(name, do: block) do
+    module_name =
+      case name do
+        {:__aliases__, _, tokens} ->
+          Module.concat([ExType.Typespec.Elixir | tokens])
+
+        erlang_module when is_atom(erlang_module) ->
+          Module.concat([ExType.Typespec, erlang_module])
+      end
+
+    # scan to find all specs
+    defs =
+      Macro.postwalk(block, [], fn code, acc ->
+        case code do
+          {:@, _, [{:spec, _, [{:::, _, [{name, _, args}, _]}]}]} ->
+            {code, [{name, length(args)} | acc]}
+
+          {:@, _, [{:spec, _, [{:when, _, [{:::, _, [{name, _, args}, _]}, _]}]}]} ->
+            {code, [{name, length(args)} | acc]}
+
+          _ ->
+            {code, acc}
+        end
+      end)
+      |> elem(1)
+      # handle @spec unquote(:"====")(...) :: ...
+      |> Enum.map(fn
+        {{:unquote, _, [name]}, arity} -> {name, arity}
+        {name, arity} -> {name, arity}
+      end)
+      |> Enum.uniq()
+      |> Enum.map(fn {name, arity} ->
+        quote do
+          @dialyzer {:nowarn_function, {unquote(name), unquote(arity)}}
+          def unquote(name)(unquote_splicing(List.duplicate(:_, arity))), do: nil
+        end
+      end)
+
+    quote do
+      defmodule unquote(module_name) do
+        unquote(block)
+        unquote_splicing(defs)
+      end
+    end
+  end
+
+  def from_beam_type(module, name, arity = 1) do
+    {:ok, ts} = Code.Typespec.fetch_types(module)
+
+    result =
+      ts
+      |> Enum.map(fn {:type, type} ->
+        Code.Typespec.type_to_quoted(type)
+      end)
+      |> Enum.find(fn
+        # for arity = 1 for now
+        {:::, _, [{^name, _, []}, _]} ->
+          true
+
+        _ ->
+          false
+      end)
+
+    case result do
+      nil ->
+        {:error, {:not_found_type, module, name, arity}}
+
+      {:::, _, [_, right]} ->
+        {:ok, right}
+    end
+  end
+
   # {args, result, vars}
   def from_beam_spec(module, name, arity) do
-    {module, name, arity} = Map.get(mapping(), {module, name, arity}, {module, name, arity})
+    # {module, name, arity} = Map.get(mapping(), {module, name, arity}, {module, name, arity})
 
-    case get_spec(module, name, arity) do
+    overrided_module = String.to_atom("Elixir.ExType.Typespec.#{module}")
+
+    case fetch_specs(overrided_module, name, arity) do
       {:ok, specs} ->
         specs
 
-      :none ->
-        {:ok, specs} = Code.Typespec.fetch_specs(module)
+      {:error, _} ->
+        case fetch_specs(module, name, arity) do
+          {:ok, specs} ->
+            specs
 
+          {:error, error} ->
+            raise error
+        end
+    end
+    |> Enum.map(fn spec -> convert_beam_spec(spec, name) end)
+  end
+
+  def fetch_specs(module, name, arity) do
+    case Code.Typespec.fetch_specs(module) do
+      {:ok, specs} ->
         matched =
           Enum.filter(specs, fn x ->
             elem(x, 0) == {name, arity}
@@ -19,16 +107,21 @@ defmodule ExType.Typespec do
 
         case matched do
           [{{^name, ^arity}, erlang_abstract_formats}] ->
-            erlang_abstract_formats
-            |> Enum.map(fn eaf ->
-              Code.Typespec.spec_to_quoted(name, eaf)
-            end)
+            result =
+              erlang_abstract_formats
+              |> Enum.map(fn eaf ->
+                Code.Typespec.spec_to_quoted(name, eaf)
+              end)
+
+            {:ok, result}
 
           _ ->
-            raise "cannot find beam spec for #{module}, #{name}, #{arity}"
+            {:error, "cannot find beam spec for #{module}, #{name}, #{arity}"}
         end
+
+      :error ->
+        {:error, "cannot find beam spec for #{module}"}
     end
-    |> Enum.map(fn spec -> convert_beam_spec(spec, name) end)
   end
 
   def convert_beam_spec(spec, name) do
@@ -39,101 +132,5 @@ defmodule ExType.Typespec do
       {:when, _, [{:::, _, [{^name, _, args}, result]}, vars]} ->
         {args, result, vars}
     end
-  end
-
-  def get_spec(module, name, arity) do
-    case typespec() do
-      %{^module => quoted} ->
-        specs =
-          case quoted do
-            {:__block__, [], specs} ->
-              specs
-
-            {:@, _, _} = spec ->
-              [spec]
-          end
-
-        specs
-        |> Enum.map(fn {:@, _, [{:spec, _, [spec]}]} ->
-          spec
-        end)
-        |> Enum.filter(fn
-          {:when, [], [{:::, [], [{^name, _, args} | _]} | _]} when length(args) == arity ->
-            true
-
-          {:::, [], [{^name, _, args} | _]} ->
-            true
-
-          _ ->
-            false
-        end)
-        |> case do
-          [] ->
-            :none
-
-          x when is_list(x) ->
-            {:ok, x}
-        end
-
-      _ ->
-        :none
-    end
-  end
-
-  # override exist type specs
-  def typespec() do
-    %{
-      Code =>
-        quote do
-          @spec eval_string(binary()) :: {any(), [any()]}
-        end,
-      Enum =>
-        quote do
-          @spec map([x], (x -> y)) :: [y] when x: any(), y: any()
-
-          @spec filter([x], (x -> boolean())) :: [x] when x: any()
-
-          @spec flat_map([x], (x -> [y])) :: [y] when x: any(), y: any()
-
-          @spec reduce([x], y, (x, y -> y)) :: y when x: any(), y: any()
-
-          @spec reduce_while([x], y, (x, y -> {:cont, y} | {:halt, y})) :: y
-                when x: any(), y: any()
-
-          @spec join([binary()], binary()) :: binary()
-        end,
-      Stream =>
-        quote do
-          @spec map(Enumerable.t(x), (x -> y)) :: Enumerable.t(y) when x: any(), y: any()
-
-          @spec filter(Enumerable.t(x), (x -> boolean())) :: Enumerable.t(x) when x: any()
-
-          @spec flat_map(Enumerable.t(x), (x -> Enumerable.t(y))) :: Enumerable.t(y)
-                when x: any(), y: any()
-        end,
-      Path =>
-        quote do
-          @spec wildcard(Path.t()) :: [binary()]
-          @spec wildcard(Path.t(), [{:match_dot, boolean()}]) :: [binary()]
-        end
-    }
-  end
-
-  @spec mapping() :: %{{atom, atom, integer} => {atom, atom, integer}}
-
-  def mapping() do
-    %{
-      {:erlang, :+, 1} => {Kernel, :+, 1},
-      {:erlang, :+, 2} => {Kernel, :+, 2},
-      {:erlang, :-, 1} => {Kernel, :-, 1},
-      {:erlang, :-, 2} => {Kernel, :-, 2},
-      {:erlang, :*, 2} => {Kernel, :*, 2},
-      {:erlang, :/, 2} => {Kernel, :/, 2},
-      {:erlang, :"/=", 2} => {Kernel, :!=, 2},
-      {:erlang, :"=/=", 2} => {Kernel, :!==, 2},
-      {:erlang, :<, 2} => {Kernel, :<, 2},
-      {:erlang, :<=, 2} => {Kernel, :<=, 2},
-      {:erlang, :==, 2} => {Kernel, :==, 2}
-    }
   end
 end

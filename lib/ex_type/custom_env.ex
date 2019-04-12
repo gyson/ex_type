@@ -2,7 +2,6 @@ defmodule ExType.CustomEnv do
   @moduledoc false
 
   use ExType.Helper
-  alias ExType.Context
 
   defmodule BeforeCompile do
     defmacro __before_compile__(env) do
@@ -63,9 +62,9 @@ defmodule ExType.CustomEnv do
     Module.put_attribute(module, :ex_type_defp, {call, block, caller_env})
   end
 
-  def process_defs(call, block, caller_env, specs, defps) do
+  def process_defs(call, block, caller_env, specs, _defps) do
     # save call and do block, and eval it
-    {name, meta, vars} = call
+    {name, _meta, vars} = call
 
     exist_vars = Map.get(caller_env, :current_vars, %{})
 
@@ -105,14 +104,12 @@ defmodule ExType.CustomEnv do
       |> :elixir_expand.expand(env)
       |> elem(0)
       # |> Macro.to_string() |> IO.puts
-      # |> IO.inspect()
+      # |> Helper.inspect()
       |> ExType.Checker.eval(context)
       |> case do
         {:ok, result, _new_context} ->
           result
       end
-
-    # |> IO.inspect()
 
     # if it can match
     case ExType.Unification.unify_spec(expected_result, final_result, context) do

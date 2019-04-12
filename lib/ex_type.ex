@@ -6,7 +6,7 @@ defmodule ExType do
   def check(file) do
     [
       "import Kernel, except: [def: 2, defp: 2, defmodule: 2];",
-      "import ExType.CustomEnv, only: [def: 2, defmodule: 2];",
+      "import ExType.CustomEnv, only: [def: 2, defp: 2, defmodule: 2];",
       File.read!(file)
     ]
     |> Enum.join("")
