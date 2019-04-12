@@ -78,8 +78,14 @@ defmodule ExType.CustomEnv do
 
     {args, expected_result, _type_variables} =
       specs
-      |> Enum.map(fn {:spec, spec, _} ->
-        ExType.Typespec.convert_beam_spec(spec, name)
+      |> Enum.flat_map(fn {:spec, spec, _} ->
+        case ExType.Typespec.convert_beam_spec(spec) do
+          {^name, args, result, vars} ->
+            [{args, result, vars}]
+
+          _ ->
+            []
+        end
       end)
       |> Enum.at(0)
 

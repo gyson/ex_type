@@ -49,6 +49,17 @@ defmodule ExType.Helper do
     end
   end
 
+  defmacro eval_error(code, context) do
+    quote do
+      {:error,
+       %ExType.Checker.EvalError{
+         code: unquote(code),
+         context: unquote(context),
+         line: "#{__ENV__.file}:#{__ENV__.line}"
+       }}
+    end
+  end
+
   def is_protocol(module) do
     try do
       module.__protocol__(:module)

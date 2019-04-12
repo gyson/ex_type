@@ -1,3 +1,7 @@
+defmodule ExType.Checker.EvalError do
+  defstruct [:code, :context, :line]
+end
+
 defmodule ExType.Checker do
   @moduledoc false
 
@@ -125,7 +129,7 @@ defmodule ExType.Checker do
   end
 
   # remote call
-  def eval({{:., _, [module, name]}, _, args}, context) do
+  def eval({{:., _, [module, name]}, _, args} = code, context) do
     args_types =
       Enum.map(args, fn arg ->
         {:ok, arg_type, _} = eval(arg, context)
@@ -158,7 +162,7 @@ defmodule ExType.Checker do
       end)
 
     if Enum.empty?(unified_types) do
-      {:error, "not match any type"}
+      Helper.eval_error(code, context)
     else
       {:ok, union_types(unified_types), context}
     end
@@ -232,6 +236,34 @@ defmodule ExType.Checker do
       |> union_types()
 
     {:ok, t, context}
+  end
+
+  @type f(x) :: T.p(Enumerable.tq(), x)
+
+  # for expression
+  def eval({:for, _, args}, context) do
+    case args do
+      [{:<-, _, [left, right]}, [do: expr]] ->
+        with {:ok, type, _} <- eval(right, context),
+             # need to get Enumerable out
+             {:ok, _, type_variable: %{x: x_type}} <-
+               Unification.unify_spec(
+                 {{:., [], [T, :p]}, [],
+                  [{{:., [], [Enumerable, :t]}, [], []}, {:x, [], Elixir}]},
+                 type,
+                 context
+               ),
+             {:ok, _, new_context} <- Unification.unify_pattern(left, x_type, context),
+             {:ok, type, _} <- eval(expr, new_context) do
+          {:ok, %Type.List{type: type}, context}
+        else
+          error -> error
+        end
+    end
+  end
+
+  def eval(code, context) do
+    Helper.eval_error(code, context)
   end
 
   def union_types(types) do

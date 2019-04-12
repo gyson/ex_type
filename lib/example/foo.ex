@@ -15,4 +15,12 @@ defmodule ExType.Example.Foo do
       x + y
     end)
   end
+
+  @spec for_expr() :: any()
+
+  def for_expr() do
+    for x <- [1, 2, 3] do
+      x + 1
+    end
+  end
 end

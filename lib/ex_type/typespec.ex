@@ -94,7 +94,10 @@ defmodule ExType.Typespec do
             raise error
         end
     end
-    |> Enum.map(fn spec -> convert_beam_spec(spec, name) end)
+    |> Enum.map(fn spec ->
+      {^name, args, result, vars} = convert_beam_spec(spec)
+      {args, result, vars}
+    end)
   end
 
   def fetch_specs(module, name, arity) do
@@ -124,13 +127,13 @@ defmodule ExType.Typespec do
     end
   end
 
-  def convert_beam_spec(spec, name) do
+  def convert_beam_spec(spec) do
     case spec do
-      {:::, _, [{^name, _, args}, result]} ->
-        {args, result, []}
+      {:::, _, [{name, _, args}, result]} ->
+        {name, args, result, []}
 
-      {:when, _, [{:::, _, [{^name, _, args}, result]}, vars]} ->
-        {args, result, vars}
+      {:when, _, [{:::, _, [{name, _, args}, result]}, vars]} ->
+        {name, args, result, vars}
     end
   end
 end
