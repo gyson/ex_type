@@ -1,7 +1,7 @@
 defmodule ExType.Example.Foo do
   use T
 
-  @spec hello() :: any()
+  @spec hello() :: integer()
 
   def hello() do
     %{1 => 2, 3 => 4}
@@ -16,11 +16,19 @@ defmodule ExType.Example.Foo do
     end)
   end
 
-  @spec for_expr() :: any()
+  @spec for_fn() :: [integer()]
 
-  def for_expr() do
+  def for_fn() do
     for x <- [1, 2, 3] do
       x + 1
+    end
+  end
+
+  @spec with_fn() :: integer()
+
+  def with_fn() do
+    with {:ok, a} <- {:ok, 123} do
+      a + 1
     end
   end
 end

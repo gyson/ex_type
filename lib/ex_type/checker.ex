@@ -238,8 +238,6 @@ defmodule ExType.Checker do
     {:ok, t, context}
   end
 
-  @type f(x) :: T.p(Enumerable.tq(), x)
-
   # for expression
   def eval({:for, _, args}, context) do
     case args do
@@ -259,6 +257,15 @@ defmodule ExType.Checker do
         else
           error -> error
         end
+    end
+  end
+
+  def eval({:with, _, args}, context) do
+    case args do
+      [{:<-, _, [left, right]}, [do: expr]] ->
+        {:ok, type, _} = eval(right, context)
+        {:ok, _, new_context} = Unification.unify_pattern(left, type, context)
+        eval(expr, new_context)
     end
   end
 
