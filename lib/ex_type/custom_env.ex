@@ -112,10 +112,14 @@ defmodule ExType.CustomEnv do
 
     final_result =
       block
-      # support T.inspect
       |> Macro.postwalk(fn
+        # support T.inspect
         {:., m1, [{:__aliases__, m2, [:T]}, :inspect]} ->
           {:., m1, [{:__aliases__, m2, [:ExType, :T]}, :inspect]}
+
+        # support T.assert
+        {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
+          {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3, [Macro.escape(arg)]}
 
         code ->
           code

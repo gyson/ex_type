@@ -7,6 +7,12 @@ defmodule ExType.Example.Foo do
     T.inspect({1, 2})
   end
 
+  @spec assert() :: any()
+
+  def assert() do
+    T.assert 10 == integer()
+  end
+
   @spec hello() :: integer()
 
   def hello() do

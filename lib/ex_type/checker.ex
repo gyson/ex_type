@@ -135,6 +135,21 @@ defmodule ExType.Checker do
     end
   end
 
+  # support T.assert
+  def eval({{:., meta, [ExType.T, :assert]}, _, [arg]} = code, context) do
+    case Code.eval_quoted(arg) do
+      {{:==, _, [left, right]}, []} ->
+        {:ok, type_left, _} = eval(left, context)
+        {:ok, type_right, _} = Unification.unify_spec(right, %Type.Any{}, context)
+
+        if type_left == type_right do
+          eval(:nil, context)
+        else
+          Helper.eval_error(code, context)
+        end
+    end
+  end
+
   # support module attribute
   def eval({{:., _, [Module, :get_attribute]}, _, [module, attribute, _line]}, context) do
     eval(Module.get_attribute(module, attribute), context)
