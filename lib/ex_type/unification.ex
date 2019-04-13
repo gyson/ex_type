@@ -34,6 +34,12 @@ defmodule ExType.Unification do
     end
   end
 
+  # support T.~>
+  def unify_pattern({:~>, _, [left, right]}, type, context) do
+    {:ok, new_type, _} = unify_spec(right, type, context)
+    unify_pattern(left, new_type, context)
+  end
+
   def unify_pattern(atom, type, context) when is_atom(atom) do
     case type do
       %Type.Atom{literal: true, value: ^atom} ->

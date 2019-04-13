@@ -65,4 +65,14 @@ defmodule ExType.Example.Foo do
   def fab(0), do: 0
   def fab(1), do: 1
   def fab(n), do: fab(n - 1) + fab(n - 2)
+
+  @spec hint() :: integer()
+
+  def hint() do
+    x ~> integer() = :erlang.binary_to_term("xxxxx")
+
+    T.assert(x == integer())
+
+    x
+  end
 end

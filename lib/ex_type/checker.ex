@@ -173,10 +173,15 @@ defmodule ExType.Checker do
     eval(Module.get_attribute(context.env.module, attribute), context)
   end
 
-  # remote call
-  def eval({{:., _, [{:__aliases__, _, module_tokens}, name]}, _, args} = code, context) do
+  # remote call, e.g. Enum.map
+  def eval({{:., m1, [{:__aliases__, _, module_tokens}, name]}, m2, args}, context) do
     module = Module.concat(module_tokens)
 
+    eval({{:., m1, [module, name]}, m2, args}, context)
+  end
+
+  # eralng module, e.g. :erlang.binary_to_term
+  def eval({{:., _, [module, name]}, _, args} = code, context) do
     args_types =
       Enum.map(args, fn arg ->
         {:ok, arg_type, _} = eval(arg, context)

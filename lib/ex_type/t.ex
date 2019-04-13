@@ -1,9 +1,15 @@
 defmodule ExType.T do
-  def inspect(_, _ \\ nil) do
-    nil
+  @moduledoc false
+
+  @spec inspect(x) :: x when x: any()
+
+  def inspect(x) do
+    x
   end
 
-  def assert(_, _ \\ nil) do
+  @spec assert(any()) :: nil
+
+  def assert(_) do
     nil
   end
 end

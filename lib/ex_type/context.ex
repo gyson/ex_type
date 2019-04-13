@@ -23,3 +23,11 @@ defmodule ExType.Context do
     %{context | type_variables: Map.put(type_variables, name, type)}
   end
 end
+
+defimpl Inspect, for: ExType.Context do
+  @moduledoc false
+
+  def inspect(_env, _opts) do
+    "%ExType.Context{}"
+  end
+end

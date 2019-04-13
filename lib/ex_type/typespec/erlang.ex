@@ -23,4 +23,6 @@ deftypespec :erlang do
   @spec unquote(:*)(float, float) :: float
 
   @spec unquote(:/)(number, number) :: float
+
+  @spec binary_to_term(binary()) :: any()
 end
