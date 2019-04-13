@@ -32,7 +32,6 @@ defmodule ExType.CustomEnv do
     ExType.CustomEnv.save_def(__CALLER__.module, call, block, __CALLER__)
 
     quote do
-      # @ex_type_def quote(do: {unquote(call), unquote(block), unquote(__CALLER__)})
       Kernel.def(unquote(call), do: unquote(block))
     end
   end
@@ -68,7 +67,7 @@ defmodule ExType.CustomEnv do
     Module.put_attribute(module, :ex_type_defp, {call, block, caller_env})
   end
 
-  def process_defs(call, block, caller_env, specs, _defps) do
+  def process_defs(call, block, caller_env, specs, defps) do
     # save call and do block, and eval it
     {name, _meta, vars} = call
 
@@ -95,7 +94,16 @@ defmodule ExType.CustomEnv do
       end)
       |> Enum.at(0)
 
-    context = %Context{env: env}
+    functions =
+      defps
+      |> Enum.map(fn {{fn_name, _, fn_args}, fn_body, fn_env} ->
+        fn_arity = length(fn_args)
+
+        {{fn_name, fn_arity}, {fn_args, fn_body, fn_env}}
+      end)
+      |> Enum.into(%{})
+
+    context = %Context{env: env, functions: functions}
 
     {types, context} =
       Enum.reduce(args, {[], context}, fn input, {acc, ctx} ->
@@ -121,20 +129,10 @@ defmodule ExType.CustomEnv do
         {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
           {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3, [Macro.escape(arg)]}
 
-        # support unquote
-        {:unquote, m1, [arg]} ->
-          {value, _} = Code.eval_quoted(arg, [], caller_env)
-
-          {{:., m1, [{:__aliases__, m1, [:ExType, :T]}, :ex_type_unquote]}, m1,
-           [Macro.escape(value)]}
-
         code ->
           code
       end)
-      # Note: it's private API
-      |> :elixir_expand.expand(env)
-      |> elem(0)
-      # |> Macro.to_string() |> IO.puts
+      |> Macro.expand(env)
       # |> Helper.inspect()
       |> ExType.Checker.eval(context)
       |> case do

@@ -124,7 +124,7 @@ defmodule ExType.Checker do
   end
 
   # support T.inspect
-  def eval({{:., meta, [ExType.T, :inspect]}, _, args} = code, context) do
+  def eval({{:., meta, [{:__aliases__, _, [:ExType, :T]}, :inspect]}, _, args} = code, context) do
     line = "T.inspect at #{context.env.file}:#{Keyword.get(meta, :line, "?")}"
 
     case args do
@@ -139,7 +139,7 @@ defmodule ExType.Checker do
   end
 
   # support T.assert
-  def eval({{:., _, [ExType.T, :assert]}, _, [arg]} = code, context) do
+  def eval({{:., _, [{:__aliases__, _, [:ExType, :T]}, :assert]}, _, [arg]} = code, context) do
     case Code.eval_quoted(arg) do
       {{:==, _, [left, right]}, []} ->
         {:ok, type_left, _} = eval(left, context)
@@ -154,20 +154,29 @@ defmodule ExType.Checker do
   end
 
   # support unquote
-  def eval({{:., _, [ExType.T, :ex_type_unquote]}, _, [arg]} = code, context) do
+  def eval({:unquote, _, [arg]} = code, context) do
     case Code.eval_quoted(arg) do
       {value, []} ->
         eval(value, context)
+
+      _ ->
+        Helper.eval_error(code, context)
     end
   end
 
   # support module attribute
-  def eval({{:., _, [Module, :get_attribute]}, _, [module, attribute, _line]}, context) do
-    eval(Module.get_attribute(module, attribute), context)
+  def eval(
+        {{:., _, [{:__aliases__, _, [:Module]}, :get_attribute]}, _,
+         [{:__MODULE__, _, _}, attribute, _]},
+        context
+      ) do
+    eval(Module.get_attribute(context.env.module, attribute), context)
   end
 
   # remote call
-  def eval({{:., _, [module, name]}, _, args} = code, context) do
+  def eval({{:., _, [{:__aliases__, _, module_tokens}, name]}, _, args} = code, context) do
+    module = Module.concat(module_tokens)
+
     args_types =
       Enum.map(args, fn arg ->
         {:ok, arg_type, _} = eval(arg, context)
@@ -304,6 +313,49 @@ defmodule ExType.Checker do
         {:ok, type, _} = eval(right, context)
         {:ok, _, new_context} = Unification.unify_pattern(left, type, context)
         eval(expr, new_context)
+    end
+  end
+
+  # function call, e.g. 1 + 1
+  def eval({name, meta, args} = code, context) when is_atom(name) and is_list(args) do
+    arity = length(args)
+
+    case Map.fetch(context.functions, {name, arity}) do
+      {:ok, {fn_args, fn_body, fn_env}} ->
+        args_types =
+          Enum.map(args, fn arg ->
+            {:ok, type, _} = eval(arg, context)
+            type
+          end)
+
+        fn_context = %Context{env: fn_env, functions: context.functions}
+
+        fn_context =
+          Enum.zip(fn_args, args_types)
+          |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
+            {:ok, _, acc_context} = Unification.unify_pattern(arg, type, acc_context)
+            acc_context
+          end)
+
+        {:ok, type, _} = eval(fn_body, fn_context)
+
+        {:ok, type, context}
+
+      :error ->
+        context.env.functions
+        |> Enum.find(fn {_, list} ->
+          Enum.any?(list, fn {n, a} -> n == name and a == arity end)
+        end)
+        |> case do
+          {module, _} ->
+            eval(
+              {{:., meta, [{:__aliases__, meta, Module.split(module)}, name]}, meta, args},
+              context
+            )
+
+          nil ->
+            Helper.eval_error(code, context)
+        end
     end
   end
 

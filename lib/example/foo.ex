@@ -49,4 +49,14 @@ defmodule ExType.Example.Foo do
       a + 1
     end
   end
+
+  @spec call_defp() :: float()
+
+  def call_defp() do
+    my_defp(123, 2.2)
+  end
+
+  defp my_defp(a, b) do
+    a + b
+  end
 end
