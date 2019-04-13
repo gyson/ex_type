@@ -10,6 +10,6 @@ defmodule ExType do
       File.read!(file)
     ]
     |> Enum.join("")
-    |> Code.eval_string()
+    |> Code.eval_string([], file: file)
   end
 end

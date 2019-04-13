@@ -1,6 +1,12 @@
 defmodule ExType.Example.Foo do
   use T
 
+  @spec hello() :: any()
+
+  def hello() do
+    T.inspect({1, 2})
+  end
+
   @spec hello() :: integer()
 
   def hello() do

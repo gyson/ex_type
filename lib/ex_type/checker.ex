@@ -123,6 +123,18 @@ defmodule ExType.Checker do
     eval(body, new_context)
   end
 
+  # support T.inspect
+  def eval({{:., meta, [ExType.T, :inspect]}, _, args} = raw, context) do
+    line = "T.inspect at #{context.env.file}:#{Keyword.get(meta, :line, "?")}"
+
+    case args do
+      [item] ->
+        {:ok, type, _} = result = eval(item, context)
+        Helper.inspect({line, type})
+        result
+    end
+  end
+
   # support module attribute
   def eval({{:., _, [Module, :get_attribute]}, _, [module, attribute, _line]}, context) do
     eval(Module.get_attribute(module, attribute), context)

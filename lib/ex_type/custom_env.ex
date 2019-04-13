@@ -106,6 +106,14 @@ defmodule ExType.CustomEnv do
 
     final_result =
       block
+      # support T.inspect
+      |> Macro.postwalk(fn
+        {:., m1, [{:__aliases__, m2, [:T]}, :inspect]} ->
+          {:., m1, [{:__aliases__, m2, [:ExType, :T]}, :inspect]}
+
+        code ->
+          code
+      end)
       # Note: it's private API
       |> :elixir_expand.expand(env)
       |> elem(0)
