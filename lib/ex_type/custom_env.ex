@@ -71,16 +71,6 @@ defmodule ExType.CustomEnv do
     # save call and do block, and eval it
     {name, _meta, vars} = call
 
-    exist_vars = Map.get(caller_env, :current_vars, %{})
-
-    new_vars =
-      vars
-      |> Enum.reduce(exist_vars, fn {name, _, nil}, acc ->
-        Map.put(acc, {name, nil}, {0, :term})
-      end)
-
-    env = Map.put(caller_env, :current_vars, new_vars)
-
     {args, expected_result, _type_variables} =
       specs
       |> Enum.flat_map(fn {:spec, spec, _} ->
@@ -94,6 +84,7 @@ defmodule ExType.CustomEnv do
       end)
       |> Enum.at(0)
 
+    # TODO: support multiple functions pattern match
     functions =
       defps
       |> Enum.map(fn {{fn_name, _, fn_args}, fn_body, fn_env} ->
@@ -103,7 +94,17 @@ defmodule ExType.CustomEnv do
       end)
       |> Enum.into(%{})
 
-    context = %Context{env: env, functions: functions}
+    spec_map =
+      specs
+      |> Enum.map(fn {:spec, spec, _} ->
+        ExType.Typespec.convert_beam_spec(spec)
+      end)
+      |> Enum.group_by(
+        fn {name, args, _, _} -> {name, length(args)} end,
+        fn {_, args, result, vars} -> {args, result, vars} end
+      )
+
+    context = %Context{env: caller_env, functions: functions, specs: spec_map}
 
     {types, context} =
       Enum.reduce(args, {[], context}, fn input, {acc, ctx} ->
@@ -132,7 +133,7 @@ defmodule ExType.CustomEnv do
         code ->
           code
       end)
-      |> Macro.expand(env)
+      |> Macro.expand(caller_env)
       # |> Helper.inspect()
       |> ExType.Checker.eval(context)
       |> case do

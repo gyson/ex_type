@@ -320,41 +320,83 @@ defmodule ExType.Checker do
   def eval({name, meta, args} = code, context) when is_atom(name) and is_list(args) do
     arity = length(args)
 
-    case Map.fetch(context.functions, {name, arity}) do
-      {:ok, {fn_args, fn_body, fn_env}} ->
+    # if it has specs for it, do not look at the function
+    case Map.fetch(context.specs, {name, arity}) do
+      {:ok, specs} ->
         args_types =
           Enum.map(args, fn arg ->
             {:ok, type, _} = eval(arg, context)
             type
           end)
 
-        fn_context = %Context{env: fn_env, functions: context.functions}
+        unified_types =
+          specs
+          |> Enum.flat_map(fn {inputs, output, _vars} ->
+            result =
+              Enum.zip(inputs, args_types)
+              |> Enum.reduce_while(context, fn {input, arg_type}, acc_context ->
+                case Unification.unify_spec(input, arg_type, acc_context) do
+                  {:ok, _type, new_context} ->
+                    {:cont, new_context}
 
-        fn_context =
-          Enum.zip(fn_args, args_types)
-          |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
-            {:ok, _, acc_context} = Unification.unify_pattern(arg, type, acc_context)
-            acc_context
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+              end)
+
+            case result do
+              {:error, _error} ->
+                []
+
+              context ->
+                {:ok, type, _} = Unification.unify_spec(output, %Type.Any{}, context)
+                [type]
+            end
           end)
 
-        {:ok, type, _} = eval(fn_body, fn_context)
-
-        {:ok, type, context}
+        if Enum.empty?(unified_types) do
+          Helper.eval_error(code, context)
+        else
+          {:ok, union_types(unified_types), context}
+        end
 
       :error ->
-        context.env.functions
-        |> Enum.find(fn {_, list} ->
-          Enum.any?(list, fn {n, a} -> n == name and a == arity end)
-        end)
-        |> case do
-          {module, _} ->
-            eval(
-              {{:., meta, [{:__aliases__, meta, Module.split(module)}, name]}, meta, args},
-              context
-            )
+        case Map.fetch(context.functions, {name, arity}) do
+          {:ok, {fn_args, fn_body, fn_env}} ->
+            args_types =
+              Enum.map(args, fn arg ->
+                {:ok, type, _} = eval(arg, context)
+                type
+              end)
 
-          nil ->
-            Helper.eval_error(code, context)
+            fn_context = %Context{env: fn_env, functions: context.functions, specs: context.specs}
+
+            fn_context =
+              Enum.zip(fn_args, args_types)
+              |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
+                {:ok, _, acc_context} = Unification.unify_pattern(arg, type, acc_context)
+                acc_context
+              end)
+
+            {:ok, type, _} = eval(fn_body, fn_context)
+
+            {:ok, type, context}
+
+          :error ->
+            context.env.functions
+            |> Enum.find(fn {_, list} ->
+              Enum.any?(list, fn {n, a} -> n == name and a == arity end)
+            end)
+            |> case do
+              {module, _} ->
+                eval(
+                  {{:., meta, [{:__aliases__, meta, Module.split(module)}, name]}, meta, args},
+                  context
+                )
+
+              nil ->
+                Helper.eval_error(code, context)
+            end
         end
     end
   end

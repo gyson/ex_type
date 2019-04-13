@@ -50,13 +50,19 @@ defmodule ExType.Example.Foo do
     end
   end
 
-  @spec call_defp() :: float()
+  @spec call_defp(integer()) :: float()
 
-  def call_defp() do
-    my_defp(123, 2.2)
+  def call_defp(x) do
+    add(x, 2.2)
   end
 
-  defp my_defp(a, b) do
+  defp add(a, b) do
     a + b
   end
+
+  @spec fab(integer()) :: integer()
+
+  def fab(0), do: 0
+  def fab(1), do: 1
+  def fab(n), do: fab(n - 1) + fab(n - 2)
 end

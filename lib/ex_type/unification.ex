@@ -271,6 +271,16 @@ defmodule ExType.Unification do
     end
   end
 
+  @type_true %Type.Atom{literal: true, value: true}
+  @type_false %Type.Atom{literal: true, value: false}
+
+  def unify_spec({:boolean, _, []}, type, context) do
+    case type do
+      %Type.Any{} ->
+        {:ok, %Type.Union{types: [@type_true, @type_false]}, context}
+    end
+  end
+
   def unify_spec({:binary, _, []}, type, context) do
     case type do
       %Type.BitString{} ->
