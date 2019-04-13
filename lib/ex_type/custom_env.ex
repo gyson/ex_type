@@ -14,6 +14,12 @@ defmodule ExType.CustomEnv do
 
       # check each defs should have spec.
       defs
+      # support mix type.only
+      |> Enum.filter(fn {{name, _, args}, _, _} ->
+        ["ExType", "Module" | rest] = Module.split(env.module)
+        ExType.Filter.need_process?(env.file, Module.concat(rest), name, length(args))
+      end)
+      # |> Helper.inspect
       |> Enum.map(fn {call, block, env} ->
         ExType.CustomEnv.process_defs(call, block, env, specs, defps)
       end)

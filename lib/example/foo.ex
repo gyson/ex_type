@@ -1,9 +1,9 @@
 defmodule ExType.Example.Foo do
   use T
 
-  @spec hello() :: any()
+  @spec inspect() :: any()
 
-  def hello() do
+  def inspect() do
     T.inspect({1, 2})
   end
 

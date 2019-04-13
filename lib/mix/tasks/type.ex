@@ -2,6 +2,14 @@ defmodule Mix.Tasks.Type do
   use Mix.Task
 
   def run([]) do
+    # could run in parallel
+    for file <- get_files() do
+      ExType.check(file)
+    end
+  end
+
+  @doc false
+  def get_files() do
     cwd = File.cwd!()
 
     config =
@@ -21,11 +29,6 @@ defmodule Mix.Tasks.Type do
       |> Enum.flat_map(fn glob -> Path.wildcard(Path.join(cwd, glob)) end)
       |> Enum.into(MapSet.new())
 
-    files = MapSet.difference(includes, excludes)
-
-    # could run in parallel
-    for file <- files do
-      ExType.check(file)
-    end
+    MapSet.difference(includes, excludes)
   end
 end
