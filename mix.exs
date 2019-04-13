@@ -6,6 +6,7 @@ defmodule ExType.MixProject do
       app: :ex_type,
       version: "0.1.0",
       elixir: "~> 1.8",
+      elixirc_paths: elixirc_paths(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: [plt_add_apps: [:mix]]
@@ -24,5 +25,12 @@ defmodule ExType.MixProject do
     [
       {:dialyxir, "~> 1.0.0-rc.4", only: :dev, runtime: false}
     ]
+  end
+
+  defp elixirc_paths() do
+    case Mix.env() do
+      :test -> ["lib", "test"]
+      _ -> ["lib"]
+    end
   end
 end

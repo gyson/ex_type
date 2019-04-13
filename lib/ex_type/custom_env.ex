@@ -5,10 +5,17 @@ defmodule ExType.CustomEnv do
 
   defmodule BeforeCompile do
     defmacro __before_compile__(env) do
+      get_attribute = fn module, attribute ->
+        case Module.get_attribute(module, attribute) do
+          nil -> []
+          other -> other
+        end
+      end
+
       # get all specs now
-      specs = Module.get_attribute(env.module, :spec)
-      defs = Module.get_attribute(env.module, :ex_type_def)
-      defps = Module.get_attribute(env.module, :ex_type_defp)
+      specs = get_attribute.(env.module, :spec)
+      defs = get_attribute.(env.module, :ex_type_def)
+      defps = get_attribute.(env.module, :ex_type_defp)
 
       # Helper.inspect(%{defs: defs, defps: defps, specs: specs})
 
