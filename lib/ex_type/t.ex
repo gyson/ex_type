@@ -6,4 +6,8 @@ defmodule ExType.T do
   def assert(_, _ \\ nil) do
     nil
   end
+
+  def ex_type_unquote(_) do
+    nil
+  end
 end

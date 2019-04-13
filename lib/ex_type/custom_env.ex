@@ -121,6 +121,13 @@ defmodule ExType.CustomEnv do
         {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
           {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3, [Macro.escape(arg)]}
 
+        # support unquote
+        {:unquote, m1, [arg]} ->
+          {value, _} = Code.eval_quoted(arg, [], caller_env)
+
+          {{:., m1, [{:__aliases__, m1, [:ExType, :T]}, :ex_type_unquote]}, m1,
+           [Macro.escape(value)]}
+
         code ->
           code
       end)

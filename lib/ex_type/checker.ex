@@ -124,7 +124,7 @@ defmodule ExType.Checker do
   end
 
   # support T.inspect
-  def eval({{:., meta, [ExType.T, :inspect]}, _, args} = raw, context) do
+  def eval({{:., meta, [ExType.T, :inspect]}, _, args} = code, context) do
     line = "T.inspect at #{context.env.file}:#{Keyword.get(meta, :line, "?")}"
 
     case args do
@@ -132,21 +132,32 @@ defmodule ExType.Checker do
         {:ok, type, _} = result = eval(item, context)
         Helper.inspect({line, type})
         result
+
+      _ ->
+        Helper.eval_error(code, context)
     end
   end
 
   # support T.assert
-  def eval({{:., meta, [ExType.T, :assert]}, _, [arg]} = code, context) do
+  def eval({{:., _, [ExType.T, :assert]}, _, [arg]} = code, context) do
     case Code.eval_quoted(arg) do
       {{:==, _, [left, right]}, []} ->
         {:ok, type_left, _} = eval(left, context)
         {:ok, type_right, _} = Unification.unify_spec(right, %Type.Any{}, context)
 
         if type_left == type_right do
-          eval(:nil, context)
+          eval(nil, context)
         else
           Helper.eval_error(code, context)
         end
+    end
+  end
+
+  # support unquote
+  def eval({{:., _, [ExType.T, :ex_type_unquote]}, _, [arg]} = code, context) do
+    case Code.eval_quoted(arg) do
+      {value, []} ->
+        eval(value, context)
     end
   end
 

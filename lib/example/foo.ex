@@ -1,6 +1,12 @@
 defmodule ExType.Example.Foo do
   use T
 
+  @spec unquote_example() :: integer()
+
+  def unquote_example() do
+    unquote(12345) + 67890
+  end
+
   @spec inspect() :: any()
 
   def inspect() do
@@ -10,7 +16,7 @@ defmodule ExType.Example.Foo do
   @spec assert() :: any()
 
   def assert() do
-    T.assert 10 == integer()
+    T.assert(10 == integer())
   end
 
   @spec hello() :: integer()
