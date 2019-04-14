@@ -258,17 +258,21 @@ defmodule ExType.Checker do
   def eval({:cond, _, [[do: block]]}, context) do
     t =
       for {:->, _, [[left], right]} <- block do
-        {:ok, value_left, _} = eval(left, context)
-        {:ok, value_right, _} = eval(right, context)
+        {:ok, left_type, _} = eval(left, context)
 
-        # left should be a boolean type or true or false
-        case value_left do
-          %Type.Atom{literal: true, value: true} -> :ok
-          %Type.Atom{literal: true, value: false} -> :ok
-          _ -> raise "invalid type"
+        true_type = %Type.Atom{literal: true, value: true}
+        false_type = %Type.Atom{literal: true, value: false}
+        boolean_type = %Type.Union{types: [true_type, false_type]}
+
+        # left should be a boolean type
+        case left_type do
+          ^true_type -> :ok
+          ^false_type -> :ok
+          ^boolean_type -> :ok
         end
 
-        value_right
+        {:ok, right_type, _} = eval(right, context)
+        right_type
       end
       |> union_types()
 

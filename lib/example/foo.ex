@@ -110,4 +110,13 @@ defmodule ExType.Example.Foo do
       i -> i
     end
   end
+
+  @spec cond_example(integer(), integer()) :: integer()
+
+  def cond_example(a, b) do
+    cond do
+      a > b -> a
+      true -> b
+    end
+  end
 end
