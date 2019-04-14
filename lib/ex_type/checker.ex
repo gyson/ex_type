@@ -152,10 +152,10 @@ defmodule ExType.Checker do
           Helper.eval_error(code, context)
         end
 
-    {{:::, _, [left, right]}, []} ->
-      {:ok, new_type, _} = Unification.unify_spec(right, %Type.Any{}, context)
-      {:ok, _, new_context} = Unification.unify_pattern(left, new_type, context)
-      eval(nil, new_context)
+      {{:::, _, [left, right]}, []} ->
+        {:ok, new_type, _} = Unification.unify_spec(right, %Type.Any{}, context)
+        {:ok, _, new_context} = Unification.unify_pattern(left, new_type, context)
+        eval(nil, new_context)
     end
   end
 

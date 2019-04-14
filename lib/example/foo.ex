@@ -5,7 +5,7 @@ defmodule ExType.Example.Foo do
 
   hi = 12
 
-   def unquote_example() do
+  def unquote_example() do
     x = 10
     unquote(hi) + x
   end

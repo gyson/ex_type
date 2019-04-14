@@ -323,7 +323,7 @@ defmodule ExType.Unification do
 
           a = String.to_atom("Elixir.ExType.Typespec.#{protocol}.#{name}")
 
-          case ExType.Typespec.from_beam_type(a, :t, 1) do
+          case ExType.Typespec.from_beam_type(a, :t, 0) do
             {:ok, {{:., _, [T, :impl]}, _, [l, r]}} ->
               {:ok, _, new_context} = unify_spec(l, type, context)
               {:ok, tt, _} = unify_spec(r, %Type.Any{}, new_context)
@@ -337,29 +337,14 @@ defmodule ExType.Unification do
   end
 
   # support remote type
-  def unify_spec({{:., _, [module, name]}, _, []}, type, context)
-      when is_atom(module) and is_atom(name) do
-    {:ok, ts} = Code.Typespec.fetch_types(module)
+  def unify_spec({{:., _, [module, name]} = spec, _, args}, type, context)
+      when is_atom(module) and is_atom(name) and is_list(args) do
+    case Typespec.from_beam_type(module, name, length(args)) do
+      {:ok, ts} ->
+        unify_spec(ts, type, context)
 
-    result =
-      ts
-      |> Enum.map(fn {:type, type} ->
-        Code.Typespec.type_to_quoted(type)
-      end)
-      |> Enum.find(fn
-        {:::, _, [{^name, _, []}, _]} ->
-          true
-
-        _ ->
-          false
-      end)
-
-    case result do
-      nil ->
-        {:error, {:not_found_type, module, name}}
-
-      {:::, _, [_, right]} ->
-        unify_spec(right, type, context)
+      _ ->
+        Helper.spec_error(spec, type, context)
     end
   end
 

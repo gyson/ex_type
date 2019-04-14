@@ -43,7 +43,8 @@ defmodule ExType.CustomEnv do
       ExType.CustomEnv.save_def(
         unquote(__CALLER__.module),
         unquote(escaped_call),
-        unquote(escaped_expr))
+        unquote(escaped_expr)
+      )
 
       Kernel.def(unquote(call), unquote(expr))
     end
@@ -57,7 +58,8 @@ defmodule ExType.CustomEnv do
       ExType.CustomEnv.save_defp(
         unquote(__CALLER__.module),
         unquote(escaped_call),
-        unquote(escaped_expr))
+        unquote(escaped_expr)
+      )
 
       Kernel.defp(unquote(call), unquote(expr))
     end

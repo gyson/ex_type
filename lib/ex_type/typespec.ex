@@ -49,29 +49,50 @@ defmodule ExType.Typespec do
     end
   end
 
-  def from_beam_type(module, name, arity = 1) do
-    {:ok, ts} = Code.Typespec.fetch_types(module)
+  def from_beam_type(module, name, arity) do
+    overrided_module = String.to_atom("Elixir.ExType.Typespec.#{module}")
 
-    result =
-      ts
-      |> Enum.map(fn {:type, type} ->
-        Code.Typespec.type_to_quoted(type)
-      end)
-      |> Enum.find(fn
-        # for arity = 1 for now
-        {:::, _, [{^name, _, []}, _]} ->
-          true
+    case fetch_type(overrided_module, name, arity) do
+      {:ok, type} ->
+        {:ok, type}
 
-        _ ->
-          false
-      end)
+      {:error, _} ->
+        case fetch_type(module, name, arity) do
+          {:ok, type} ->
+            {:ok, type}
 
-    case result do
-      nil ->
-        {:error, {:not_found_type, module, name, arity}}
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
 
-      {:::, _, [_, right]} ->
-        {:ok, right}
+  def fetch_type(module, name, arity) do
+    case Code.Typespec.fetch_types(module) do
+      {:ok, ts} ->
+        result =
+          ts
+          |> Enum.map(fn {:type, type} ->
+            Code.Typespec.type_to_quoted(type)
+          end)
+          |> Enum.find(fn
+            {:::, _, [{^name, _, args}, _]} when is_list(args) ->
+              arity == length(args)
+
+            _ ->
+              false
+          end)
+
+        case result do
+          nil ->
+            {:error, {:not_found_type, module, name, arity}}
+
+          {:::, _, [_, right]} ->
+            {:ok, right}
+        end
+
+      :error ->
+        {:error, {:not_found_type, module}}
     end
   end
 

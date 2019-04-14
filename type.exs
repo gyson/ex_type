@@ -1,8 +1,8 @@
 [
   # find these files
   only: [
-    "lib/example/*.ex"
-    # "lib/ex_type.ex"
+    "lib/example/*.ex",
+    "lib/ex_type.ex"
   ],
 
   # exclude these files
