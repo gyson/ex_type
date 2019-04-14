@@ -49,6 +49,17 @@ defmodule ExType.Helper do
     end
   end
 
+  defmacro guard_error(guard, context) do
+    quote do
+      {:error,
+       %ExType.Unification.GuardError{
+         guard: unquote(guard),
+         context: unquote(context),
+         line: "#{__ENV__.file}:#{__ENV__.line}"
+       }}
+    end
+  end
+
   defmacro eval_error(code, context) do
     quote do
       {:error,

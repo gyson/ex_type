@@ -119,4 +119,22 @@ defmodule ExType.Example.Foo do
       true -> b
     end
   end
+
+  @spec type_guard_case(any(), any(), any()) :: {integer(), float(), atom()}
+
+  def type_guard_case(x, y, z) do
+    case {x, y, z} do
+      {x, y, z} when is_integer(x) and is_float(y) and is_atom(z) ->
+        {x, y, z}
+    end
+  end
+
+  @spec type_guard_receive() :: {integer(), float(), atom()}
+
+  def type_guard_receive() do
+    receive do
+      {x, y, z} when is_integer(x) and is_float(y) and is_atom(z) ->
+        {x, y, z}
+    end
+  end
 end

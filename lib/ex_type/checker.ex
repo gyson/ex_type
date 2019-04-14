@@ -245,7 +245,18 @@ defmodule ExType.Checker do
 
     unioned_type =
       for {:->, _, [[left], right]} <- block do
-        {:ok, _, new_context} = Unification.unify_pattern(left, type, context)
+        new_context =
+          case left do
+            {:when, _, [when_left, when_right]} ->
+              {:ok, _, new_context} = Unification.unify_pattern(when_left, type, context)
+              {:ok, new_context} = Unification.unify_guard(when_right, new_context)
+              new_context
+
+            _ ->
+              {:ok, _, new_context} = Unification.unify_pattern(left, type, context)
+              new_context
+          end
+
         {:ok, result_type, _} = eval(right, new_context)
 
         result_type
@@ -314,7 +325,18 @@ defmodule ExType.Checker do
   def eval({:receive, _, [[do: args]]}, context) do
     t =
       for {:->, _, [[left], right]} <- args do
-        {:ok, _, new_context} = Unification.unify_pattern(left, %Type.Any{}, context)
+        new_context =
+          case left do
+            {:when, _, [when_left, when_right]} ->
+              {:ok, _, new_context} = Unification.unify_pattern(when_left, %Type.Any{}, context)
+              {:ok, new_context} = Unification.unify_guard(when_right, new_context)
+              new_context
+
+            _ ->
+              {:ok, _, new_context} = Unification.unify_pattern(left, %Type.Any{}, context)
+              new_context
+          end
+
         {:ok, type, _} = eval(right, new_context)
         type
       end

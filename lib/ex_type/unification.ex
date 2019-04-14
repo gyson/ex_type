@@ -6,6 +6,10 @@ defmodule ExType.Unification.PatternError do
   defstruct [:pattern, :type, :context, :line]
 end
 
+defmodule ExType.Unification.GuardError do
+  defstruct [:guard, :context, :line]
+end
+
 defmodule ExType.Unification do
   @moduledoc false
 
@@ -246,6 +250,16 @@ defmodule ExType.Unification do
     end
   end
 
+  def unify_spec({:atom, _, []}, type, context) do
+    case type do
+      %Type.Atom{} ->
+        {:ok, type, context}
+
+      %Type.Any{} ->
+        {:ok, %Type.Atom{literal: false}, context}
+    end
+  end
+
   def unify_spec({:integer, _, []}, type, context) do
     case type do
       %Type.Number{kind: :integer} ->
@@ -384,5 +398,43 @@ defmodule ExType.Unification do
 
   def unify_spec(spec, type, context) do
     Helper.spec_error(spec, type, context)
+  end
+
+  @spec unify_guard(any(), Context.t()) :: {:ok, Context.t()} | {:error, any()}
+
+  def unify_guard({{:., _, [:erlang, :is_atom]}, _, [{var, _, ctx}]}, context)
+      when is_atom(var) and is_atom(ctx) do
+    {:ok, Context.update_scope(context, var, %Type.Atom{literal: false})}
+  end
+
+  def unify_guard({{:., _, [:erlang, :is_binary]}, _, [{var, _, ctx}]}, context)
+      when is_atom(var) and is_atom(ctx) do
+    {:ok, Context.update_scope(context, var, %Type.BitString{kind: :binary})}
+  end
+
+  def unify_guard({{:., _, [:erlang, :is_bitstring]}, _, [{var, _, ctx}]}, context)
+      when is_atom(var) and is_atom(ctx) do
+    {:ok, Context.update_scope(context, var, %Type.BitString{kind: :bitstring})}
+  end
+
+  def unify_guard({{:., _, [:erlang, :is_integer]}, _, [{var, _, ctx}]}, context)
+      when is_atom(var) and is_atom(ctx) do
+    {:ok, Context.update_scope(context, var, %Type.Number{kind: :integer})}
+  end
+
+  def unify_guard({{:., _, [:erlang, :is_float]}, _, [{var, _, ctx}]}, context)
+      when is_atom(var) and is_atom(ctx) do
+    {:ok, Context.update_scope(context, var, %Type.Number{kind: :float})}
+  end
+
+  # TODO: add more type check
+
+  def unify_guard({{:., _, [:erlang, :andalso]}, _, [left, right]}, context) do
+    {:ok, context} = unify_guard(left, context)
+    unify_guard(right, context)
+  end
+
+  def unify_guard(guard, context) do
+    Helper.guard_error(guard, context)
   end
 end
