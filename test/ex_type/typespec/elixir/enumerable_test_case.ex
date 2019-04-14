@@ -1,5 +1,5 @@
 defmodule ExType.Typespec.Elixir.EnumerableTestCase do
-  use T
+  require T
 
   @spec hi() :: any()
 

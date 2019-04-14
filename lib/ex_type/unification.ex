@@ -34,12 +34,6 @@ defmodule ExType.Unification do
     end
   end
 
-  # support T.~>
-  def unify_pattern({:~>, _, [left, right]}, type, context) do
-    {:ok, new_type, _} = unify_spec(right, type, context)
-    unify_pattern(left, new_type, context)
-  end
-
   def unify_pattern(atom, type, context) when is_atom(atom) do
     case type do
       %Type.Atom{literal: true, value: ^atom} ->
@@ -57,7 +51,7 @@ defmodule ExType.Unification do
     unify_pattern({:{}, [], [first, second]}, type, context)
   end
 
-  def unify_pattern({:{}, _, args}, type, context) do
+  def unify_pattern({:{}, _, args} = pattern, type, context) do
     case type do
       %Type.Tuple{types: types} ->
         {unified_types, context} =
@@ -70,10 +64,10 @@ defmodule ExType.Unification do
         {:ok, %Type.Tuple{types: unified_types}, context}
 
       %Type.Any{} ->
-        {:error, :todo}
+        Helper.pattern_error(pattern, type, context)
 
       _ ->
-        {:error, :unify_pattern_tuple}
+        Helper.pattern_error(pattern, type, context)
     end
   end
 

@@ -1,5 +1,5 @@
 defmodule ExType.Typespec.Elixir.StreamTestCase do
-  use T
+  require T
 
   @spec hi() :: any()
 

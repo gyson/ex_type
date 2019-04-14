@@ -76,7 +76,7 @@ defmodule ExType.Typespec do
   end
 
   # {args, result, vars}
-  def from_beam_spec(module, name, arity) do
+  def from_beam_spec(module, name, arity) when is_atom(module) do
     # {module, name, arity} = Map.get(mapping(), {module, name, arity}, {module, name, arity})
 
     overrided_module = String.to_atom("Elixir.ExType.Typespec.#{module}")

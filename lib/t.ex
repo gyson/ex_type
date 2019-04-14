@@ -26,32 +26,6 @@ defmodule T do
   # shortcut for protocol
   @type p(x, y) :: any() | x | y
 
-  @doc false
-  defmacro __using__(_opts) do
-    quote do
-      import T, only: [{:~>, 2}]
-    end
-  end
-
-  @doc """
-  Inline type annotation support.
-
-  ## Example
-
-      x ~> integer() = get(:something)
-
-      [1, 2, 3]
-      |> Enum.map(fn x -> get(x) end)
-      |> T.~>([number]) # hint
-      |> Enum.filter(fn x ->
-        ...
-      end)
-
-  """
-  defmacro x ~> _type do
-    quote(do: unquote(x))
-  end
-
   @doc """
   Inspect type while doing type checking.
 
@@ -71,6 +45,8 @@ defmodule T do
 
       x = 10
       T.assert x == integer()
+
+      T.assert x :: integer() # cast x as integer when x is like any()
 
   """
   defmacro assert(_expr, _message \\ "") do

@@ -22,12 +22,12 @@ defmodule ExType.CustomEnv do
       # check each defs should have spec.
       defs
       # support mix type.only
-      |> Enum.filter(fn {{name, _, args}, _, _} ->
+      |> Enum.filter(fn {{name, _, args}, _} ->
         ["ExType", "Module" | rest] = Module.split(env.module)
         ExType.Filter.need_process?(env.file, Module.concat(rest), name, length(args))
       end)
       # |> Helper.inspect
-      |> Enum.map(fn {call, block, env} ->
+      |> Enum.map(fn {call, block} ->
         ExType.CustomEnv.process_defs(call, block, env, specs, defps)
       end)
 
@@ -35,19 +35,31 @@ defmodule ExType.CustomEnv do
     end
   end
 
-  defmacro def(call, do: block) do
-    ExType.CustomEnv.save_def(__CALLER__.module, call, block, __CALLER__)
+  defmacro def(call, expr) do
+    escaped_call = :elixir_quote.escape(call, :default, true)
+    escaped_expr = :elixir_quote.escape(expr, :default, true)
 
     quote do
-      Kernel.def(unquote(call), do: unquote(block))
+      ExType.CustomEnv.save_def(
+        unquote(__CALLER__.module),
+        unquote(escaped_call),
+        unquote(escaped_expr))
+
+      Kernel.def(unquote(call), unquote(expr))
     end
   end
 
-  defmacro defp(call, do: block) do
-    ExType.CustomEnv.save_defp(__CALLER__.module, call, block, __CALLER__)
+  defmacro defp(call, expr) do
+    escaped_call = :elixir_quote.escape(call, :default, true)
+    escaped_expr = :elixir_quote.escape(expr, :default, true)
 
     quote do
-      Kernel.defp(unquote(call), do: unquote(block))
+      ExType.CustomEnv.save_defp(
+        unquote(__CALLER__.module),
+        unquote(escaped_call),
+        unquote(escaped_expr))
+
+      Kernel.defp(unquote(call), unquote(expr))
     end
   end
 
@@ -64,19 +76,41 @@ defmodule ExType.CustomEnv do
     end
   end
 
-  def save_def(module, call, block, caller_env) do
+  def save_def(module, call, do: block) do
     Module.register_attribute(module, :ex_type_def, accumulate: true, persist: true)
-    Module.put_attribute(module, :ex_type_def, {call, block, caller_env})
+    Module.put_attribute(module, :ex_type_def, {call, block})
   end
 
-  def save_defp(module, call, block, caller_env) do
+  def save_defp(module, call, do: block) do
     Module.register_attribute(module, :ex_type_defp, accumulate: true, persist: true)
-    Module.put_attribute(module, :ex_type_defp, {call, block, caller_env})
+    Module.put_attribute(module, :ex_type_defp, {call, block})
   end
 
   def process_defs(call, block, caller_env, specs, defps) do
     # save call and do block, and eval it
     {name, _meta, vars} = call
+
+    # make `:elixir_expand.expand` works as expected
+    current_vars =
+      vars
+      |> Macro.postwalk([], fn
+        {name, meta, ctx} = it, acc when is_atom(name) and is_atom(ctx) ->
+          {it, [{name, meta, ctx} | acc]}
+
+        other, acc ->
+          {other, acc}
+      end)
+      |> elem(1)
+      |> Enum.map(fn {name, meta, ctx} ->
+        {{name, :elixir_utils.var_context(meta, ctx)}, {0, :term}}
+      end)
+      |> Enum.into(%{})
+
+    # update env
+    caller_env =
+      caller_env
+      |> Map.put(:function, {name, length(vars)})
+      |> Map.put(:current_vars, current_vars)
 
     {args, expected_result, _type_variables} =
       specs
@@ -94,10 +128,10 @@ defmodule ExType.CustomEnv do
     # TODO: support multiple functions pattern match
     functions =
       defps
-      |> Enum.map(fn {{fn_name, _, fn_args}, fn_body, fn_env} ->
+      |> Enum.map(fn {{fn_name, _, fn_args}, fn_body} ->
         fn_arity = length(fn_args)
 
-        {{fn_name, fn_arity}, {fn_args, fn_body, fn_env}}
+        {{fn_name, fn_arity}, {fn_args, fn_body, caller_env}}
       end)
       |> Enum.into(%{})
 
@@ -140,7 +174,8 @@ defmodule ExType.CustomEnv do
         code ->
           code
       end)
-      |> Macro.expand(caller_env)
+      |> :elixir_expand.expand(caller_env)
+      |> elem(0)
       # |> Helper.inspect()
       |> ExType.Checker.eval(context)
       |> case do

@@ -12,12 +12,16 @@ defmodule Mix.Tasks.Type do
   def get_files() do
     cwd = File.cwd!()
 
+    type_exs = Path.join(cwd, "type.exs")
+
     config =
-      cwd
-      |> Path.join("type.exs")
-      |> File.read!()
-      |> Code.eval_string()
-      |> elem(0)
+      if File.exists?(type_exs) do
+        type_exs
+        |> Code.eval_file()
+        |> elem(0)
+      else
+        []
+      end
 
     includes =
       Keyword.get(config, :only, ["lib/**/*.ex"])

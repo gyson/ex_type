@@ -1,10 +1,13 @@
 defmodule ExType.Example.Foo do
-  use T
+  require T
 
   @spec unquote_example() :: integer()
 
-  def unquote_example() do
-    unquote(12345) + 67890
+  hi = 12
+
+   def unquote_example() do
+    x = 10
+    unquote(hi) + x
   end
 
   @spec inspect() :: any()
@@ -69,10 +72,22 @@ defmodule ExType.Example.Foo do
   @spec hint() :: integer()
 
   def hint() do
-    x ~> integer() = :erlang.binary_to_term("xxxxx")
+    x = :erlang.binary_to_term("xxxxx")
+
+    T.assert(x == any())
+
+    T.assert(x :: integer())
 
     T.assert(x == integer())
 
     x
+  end
+
+  @hi 123
+
+  @spec module_attribute() :: integer()
+
+  def module_attribute() do
+    @hi
   end
 end

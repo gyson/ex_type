@@ -124,7 +124,7 @@ defmodule ExType.Checker do
   end
 
   # support T.inspect
-  def eval({{:., meta, [{:__aliases__, _, [:ExType, :T]}, :inspect]}, _, args} = code, context) do
+  def eval({{:., meta, [ExType.T, :inspect]}, _, args} = code, context) do
     location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
 
     case args do
@@ -140,7 +140,7 @@ defmodule ExType.Checker do
   end
 
   # support T.assert
-  def eval({{:., _, [{:__aliases__, _, [:ExType, :T]}, :assert]}, _, [arg]} = code, context) do
+  def eval({{:., _, [ExType.T, :assert]}, _, [arg]} = code, context) do
     case Code.eval_quoted(arg) do
       {{:==, _, [left, right]}, []} ->
         {:ok, type_left, _} = eval(left, context)
@@ -151,34 +151,16 @@ defmodule ExType.Checker do
         else
           Helper.eval_error(code, context)
         end
+
+    {{:::, _, [left, right]}, []} ->
+      {:ok, new_type, _} = Unification.unify_spec(right, %Type.Any{}, context)
+      {:ok, _, new_context} = Unification.unify_pattern(left, new_type, context)
+      eval(nil, new_context)
     end
   end
 
-  # support unquote
-  def eval({:unquote, _, [arg]} = code, context) do
-    case Code.eval_quoted(arg) do
-      {value, []} ->
-        eval(value, context)
-
-      _ ->
-        Helper.eval_error(code, context)
-    end
-  end
-
-  # support module attribute
-  def eval(
-        {{:., _, [{:__aliases__, _, [:Module]}, :get_attribute]}, _,
-         [{:__MODULE__, _, _}, attribute, _]},
-        context
-      ) do
-    eval(Module.get_attribute(context.env.module, attribute), context)
-  end
-
-  # remote call, e.g. Enum.map
-  def eval({{:., m1, [{:__aliases__, _, module_tokens}, name]}, m2, args}, context) do
-    module = Module.concat(module_tokens)
-
-    eval({{:., m1, [module, name]}, m2, args}, context)
+  def eval({{:., _, [Module, :get_attribute]}, _, [module, attribute, _line]}, context) do
+    eval(Module.get_attribute(module, attribute), context)
   end
 
   # eralng module, e.g. :erlang.binary_to_term
@@ -396,7 +378,7 @@ defmodule ExType.Checker do
             |> case do
               {module, _} ->
                 eval(
-                  {{:., meta, [{:__aliases__, meta, Module.split(module)}, name]}, meta, args},
+                  {{:., meta, [module, name]}, meta, args},
                   context
                 )
 
