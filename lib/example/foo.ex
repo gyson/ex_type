@@ -102,4 +102,12 @@ defmodule ExType.Example.Foo do
         x
     end
   end
+
+  @spec case_example(integer()) :: integer()
+
+  def case_example(x) do
+    case x do
+      i -> i
+    end
+  end
 end

@@ -240,17 +240,19 @@ defmodule ExType.Checker do
   end
 
   # unify pattern and spec
-  def eval({:case, _, [_exp, [do: block]]}, context) do
-    x =
-      for {:->, _, [[left], right]} <- block do
-        {:ok, _value_left, _} = eval(left, context)
-        {:ok, value_right, _} = eval(right, context)
+  def eval({:case, _, [exp, [do: block]]}, context) do
+    {:ok, type, context} = eval(exp, context)
 
-        value_right
+    unioned_type =
+      for {:->, _, [[left], right]} <- block do
+        {:ok, _, new_context} = Unification.unify_pattern(left, type, context)
+        {:ok, result_type, _} = eval(right, new_context)
+
+        result_type
       end
       |> union_types()
 
-    {:ok, x, context}
+    {:ok, unioned_type, context}
   end
 
   def eval({:cond, _, [[do: block]]}, context) do
