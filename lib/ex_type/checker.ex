@@ -304,6 +304,19 @@ defmodule ExType.Checker do
     end
   end
 
+  # handle receive do ... end
+  def eval({:receive, _, [[do: args]]}, context) do
+    t =
+      for {:->, _, [[left], right]} <- args do
+        {:ok, _, new_context} = Unification.unify_pattern(left, %Type.Any{}, context)
+        {:ok, type, _} = eval(right, new_context)
+        type
+      end
+      |> union_types()
+
+    {:ok, t, context}
+  end
+
   # function call, e.g. 1 + 1
   def eval({name, meta, args} = code, context) when is_atom(name) and is_list(args) do
     arity = length(args)

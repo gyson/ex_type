@@ -90,4 +90,16 @@ defmodule ExType.Example.Foo do
   def module_attribute() do
     @hi
   end
+
+  @spec receive_example() :: any()
+
+  def receive_example() do
+    receive do
+      {x} ->
+        x
+
+      [x] ->
+        x
+    end
+  end
 end

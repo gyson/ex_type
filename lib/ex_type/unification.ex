@@ -64,7 +64,13 @@ defmodule ExType.Unification do
         {:ok, %Type.Tuple{types: unified_types}, context}
 
       %Type.Any{} ->
-        Helper.pattern_error(pattern, type, context)
+        new_context =
+          Enum.reduce(args, context, fn arg, acc_context ->
+            {:ok, _, acc_context} = unify_pattern(arg, %Type.Any{}, acc_context)
+            acc_context
+          end)
+
+        {:ok, %Type.Any{}, new_context}
 
       _ ->
         Helper.pattern_error(pattern, type, context)
@@ -103,6 +109,9 @@ defmodule ExType.Unification do
 
             {:ok, type, new_context}
         end
+
+      %Type.Any{} ->
+        unify_pattern(list, %Type.List{type: %Type.Any{}}, context)
     end
   end
 
