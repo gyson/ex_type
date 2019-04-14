@@ -125,12 +125,13 @@ defmodule ExType.Checker do
 
   # support T.inspect
   def eval({{:., meta, [{:__aliases__, _, [:ExType, :T]}, :inspect]}, _, args} = code, context) do
-    line = "T.inspect at #{context.env.file}:#{Keyword.get(meta, :line, "?")}"
+    location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
 
     case args do
       [item] ->
         {:ok, type, _} = result = eval(item, context)
-        Helper.inspect({line, type})
+        type_string = type |> ExType.Typespecable.to_quote() |> Macro.to_string()
+        IO.puts("T.inspect #{type_string} at #{location}")
         result
 
       _ ->

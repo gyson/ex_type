@@ -1,4 +1,4 @@
-defmodule ExType.StreamTestCase do
+defmodule ExType.Typespec.Elixir.StreamTestCase do
   use T
 
   @spec hi() :: any()

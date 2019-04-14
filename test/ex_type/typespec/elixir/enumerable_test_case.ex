@@ -1,4 +1,4 @@
-defmodule ExType.EnumerableTestCase do
+defmodule ExType.Typespec.Elixir.EnumerableTestCase do
   use T
 
   @spec hi() :: any()
