@@ -235,17 +235,26 @@ defmodule ExType.Unification do
   end
 
   def unify_spec({:|, _, [left, right]}, type, context) do
-    case unify_spec(left, type, context) do
-      {:ok, t, c} ->
-        {:ok, t, c}
+    case type do
+      %Type.Any{} ->
+        {:ok, left_type, context} = unify_spec(left, %Type.Any{}, context)
+        {:ok, right_type, context} = unify_spec(right, %Type.Any{}, context)
+        unioned_type = ExType.Checker.union_types([left_type, right_type])
+        {:ok, unioned_type, context}
 
-      {:error, _} ->
-        case unify_spec(right, type, context) do
+      _ ->
+        case unify_spec(left, type, context) do
           {:ok, t, c} ->
             {:ok, t, c}
 
           {:error, _} ->
-            {:error, "not match union"}
+            case unify_spec(right, type, context) do
+              {:ok, t, c} ->
+                {:ok, t, c}
+
+              {:error, _} ->
+                {:error, "not match union"}
+            end
         end
     end
   end
@@ -387,7 +396,13 @@ defmodule ExType.Unification do
     unioned_type =
       case context.type_variables do
         %{^name => saved_type} ->
-          ExType.Checker.union_types([type, saved_type])
+          case type do
+            %Type.Any{} ->
+              saved_type
+
+            _ ->
+              ExType.Checker.union_types([type, saved_type])
+          end
 
         _ ->
           type

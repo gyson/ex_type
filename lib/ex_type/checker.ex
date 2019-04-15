@@ -140,21 +140,23 @@ defmodule ExType.Checker do
   end
 
   # support T.assert
-  def eval({{:., _, [ExType.T, :assert]}, _, [arg]} = code, context) do
-    case Code.eval_quoted(arg) do
-      {{:==, _, [left, right]}, []} ->
+  def eval({{:., _, [ExType.T, :assert]}, _, [operator, left, escaped_right]} = code, context) do
+    {right_spec, []} = Code.eval_quoted(escaped_right)
+    {:ok, type_right, _} = Unification.unify_spec(right_spec, %Type.Any{}, context)
+
+    case operator do
+      :== ->
         {:ok, type_left, _} = eval(left, context)
-        {:ok, type_right, _} = Unification.unify_spec(right, %Type.Any{}, context)
 
         if type_left == type_right do
           eval(nil, context)
         else
+          Helper.inspect({type_left, left})
           Helper.eval_error(code, context)
         end
 
-      {{:::, _, [left, right]}, []} ->
-        {:ok, new_type, _} = Unification.unify_spec(right, %Type.Any{}, context)
-        {:ok, _, new_context} = Unification.unify_pattern(left, new_type, context)
+      ::: ->
+        {:ok, _, new_context} = Unification.unify_pattern(left, type_right, context)
         eval(nil, new_context)
     end
   end
@@ -164,7 +166,8 @@ defmodule ExType.Checker do
   end
 
   # eralng module, e.g. :erlang.binary_to_term
-  def eval({{:., _, [module, name]}, _, args} = code, context) do
+  def eval({{:., _, [module, name]}, _, args} = code, context)
+      when is_atom(module) and is_atom(name) do
     args_types =
       Enum.map(args, fn arg ->
         {:ok, arg_type, _} = eval(arg, context)
@@ -174,6 +177,7 @@ defmodule ExType.Checker do
     unified_types =
       Typespec.from_beam_spec(module, name, length(args))
       |> Enum.flat_map(fn {inputs, output, _vars} ->
+        # TODO: apply _vars for type bounding
         result =
           Enum.zip(inputs, args_types)
           |> Enum.reduce_while(context, fn {input, arg_type}, acc_context ->
@@ -435,21 +439,23 @@ defmodule ExType.Checker do
   end
 
   def union_types(types) do
-    case Enum.uniq(types) do
+    types
+    |> Enum.flat_map(fn
+      %Type.Union{types: inner_types} ->
+        inner_types
+
+      other ->
+        [other]
+    end)
+    |> Enum.uniq()
+    |> case do
       [one] ->
         one
 
       multi ->
-        # if it's multi, need to exclude any type
-        multi
-        |> Enum.filter(fn
-          %Type.Any{} -> false
-          _ -> true
-        end)
-        |> case do
-          [one] -> one
-          xxx -> %Type.Union{types: xxx}
-        end
+        # sort for easy quick comparison
+        sorted = Enum.sort(multi)
+        %Type.Union{types: sorted}
     end
   end
 end

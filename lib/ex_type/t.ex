@@ -7,9 +7,9 @@ defmodule ExType.T do
     x
   end
 
-  @spec assert(any()) :: nil
+  @spec assert(any(), any(), any()) :: nil
 
-  def assert(_) do
+  def assert(_, _, _) do
     nil
   end
 end

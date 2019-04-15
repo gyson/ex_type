@@ -171,7 +171,11 @@ defmodule ExType.CustomEnv do
 
         # support T.assert
         {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
-          {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3, [Macro.escape(arg)]}
+          case arg do
+            {operator, _, [left, right]} when operator in [:==, :::, :<, :>] ->
+              {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3,
+               [operator, left, Macro.escape(right)]}
+          end
 
         code ->
           code
