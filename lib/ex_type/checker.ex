@@ -142,7 +142,7 @@ defmodule ExType.Checker do
   # support T.assert
   def eval({{:., _, [ExType.T, :assert]}, _, [operator, left, escaped_right]} = code, context) do
     {right_spec, []} = Code.eval_quoted(escaped_right)
-    {:ok, type_right, _} = Unification.unify_spec(right_spec, %Type.Any{}, context)
+    type_right = Typespec.eval_type(right_spec, context)
 
     case operator do
       :== ->
@@ -277,7 +277,7 @@ defmodule ExType.Checker do
 
         true_type = %Type.Atom{literal: true, value: true}
         false_type = %Type.Atom{literal: true, value: false}
-        boolean_type = %Type.Union{types: [true_type, false_type]}
+        boolean_type = Typespec.union_types([true_type, false_type])
 
         # left should be a boolean type
         case left_type do

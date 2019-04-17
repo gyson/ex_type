@@ -469,7 +469,6 @@ defmodule ExType.Typespec do
     Helper.todo("cannot match eval_type")
   end
 
-  # TODO: any() | x should be any()
   def union_types(types) do
     types
     |> Enum.flat_map(fn
@@ -485,9 +484,11 @@ defmodule ExType.Typespec do
         one
 
       multi ->
-        # sort for easy quick comparison
-        sorted = Enum.sort(multi)
-        %Type.Union{types: sorted}
+        if Enum.member?(multi, %Type.Any{}) do
+          %Type.Any{}
+        else
+          %Type.Union{types: Enum.sort(multi)}
+        end
     end
   end
 

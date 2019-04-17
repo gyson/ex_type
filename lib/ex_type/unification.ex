@@ -309,7 +309,7 @@ defmodule ExType.Unification do
   def unify_spec({:boolean, _, []}, type, context) do
     case type do
       %Type.Any{} ->
-        {:ok, %Type.Union{types: [@type_true, @type_false]}, context}
+        {:ok, Typespec.union_types([@type_true, @type_false]), context}
     end
   end
 
