@@ -35,6 +35,22 @@ defimpl Typespecable, for: Type.Intersection do
   end
 end
 
+defimpl Typespecable, for: Type.Protocol do
+  def to_quote(%Type.Protocol{module: module}) do
+    quote do
+      unquote(module).t()
+    end
+  end
+end
+
+defimpl Typespecable, for: Type.GenericProtocol do
+  def to_quote(%Type.GenericProtocol{protocol: protocol, generic: generic}) do
+    quote do
+      T.p(unquote(protocol.module).t(), unquote(ExType.Typespecable.to_quote(generic)))
+    end
+  end
+end
+
 defimpl Typespecable, for: Type.Number do
   def to_quote(%Type.Number{kind: kind}) do
     quote do
@@ -55,12 +71,31 @@ defimpl Typespecable, for: Type.Atom do
   end
 end
 
-defimpl Typespecable, for: Type.Function do
-  def to_quote(%Type.Function{args: args}) do
+defimpl Typespecable, for: Type.AnyFunction do
+  def to_quote(%Type.AnyFunction{}) do
+    quote do
+      ... -> any()
+    end
+  end
+end
+
+defimpl Typespecable, for: Type.AnonymousFunction do
+  def to_quote(%Type.AnonymousFunction{args: args}) do
     quoted_anys = List.duplicate(quote(do: any()), length(args))
 
     quote do
       unquote_splicing(quoted_anys) -> any()
+    end
+  end
+end
+
+defimpl Typespecable, for: Type.TypedFunction do
+  def to_quote(%Type.TypedFunction{inputs: inputs, output: output}) do
+    quoted_inputs = Enum.map(inputs, &Typespecable.to_quote/1)
+    quoted_output = Typespecable.to_quote(output)
+
+    quote do
+      unquote_splicing(quoted_inputs) -> unquote(quoted_output)
     end
   end
 end

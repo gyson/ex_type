@@ -185,7 +185,7 @@ defmodule ExType.Unification do
 
   def unify_spec([{:->, _, [inputs, output]}], type, context) do
     case type do
-      %Type.Function{args: args, body: body, context: fn_context} ->
+      %Type.AnonymousFunction{args: args, body: body, context: fn_context} ->
         {types, new_context} =
           Enum.reduce(inputs, {[], context}, fn input, {acc, ctx} ->
             {:ok, type, ctx} = unify_spec(input, %Type.Any{}, ctx)
@@ -239,7 +239,7 @@ defmodule ExType.Unification do
       %Type.Any{} ->
         {:ok, left_type, context} = unify_spec(left, %Type.Any{}, context)
         {:ok, right_type, context} = unify_spec(right, %Type.Any{}, context)
-        unioned_type = ExType.Checker.union_types([left_type, right_type])
+        unioned_type = ExType.Typespec.union_types([left_type, right_type])
         {:ok, unioned_type, context}
 
       _ ->
@@ -401,7 +401,7 @@ defmodule ExType.Unification do
               saved_type
 
             _ ->
-              ExType.Checker.union_types([type, saved_type])
+              ExType.Typespec.union_types([type, saved_type])
           end
 
         _ ->

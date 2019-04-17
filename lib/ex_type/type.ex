@@ -5,13 +5,20 @@ defmodule ExType.Type do
           ExType.Type.Any.t()
           | ExType.Type.Union.t()
           | ExType.Type.Intersection.t()
+          | ExType.Type.Protocol.t()
+          | ExType.Type.GenericProtocol.t()
           | ExType.Type.Number.t()
           | ExType.Type.Atom.t()
           | ExType.Type.Reference.t()
           | ExType.Type.Function.t()
+          | ExType.Type.AnyFunction.t()
+          | ExType.Type.AnonymousFunction.t()
+          | ExType.Type.TypedFunction.t()
           | ExType.Type.Port.t()
-          | ExType.Type.Pid.t()
+          | ExType.Type.PID.t()
+          # use AnyTuple ?
           | ExType.Type.Tuple.t()
+          | ExType.Type.TypedTuple.t()
           | ExType.Type.Map.t()
           | ExType.Type.Struct.t()
           | ExType.Type.List.t()
@@ -37,6 +44,32 @@ defmodule ExType.Type do
           }
 
     defstruct [:types]
+  end
+
+  defmodule TypeVariable do
+    @type t :: %__MODULE__{
+            name: atom()
+          }
+    defstruct [:name]
+  end
+
+  defmodule Protocol do
+    @type t :: %__MODULE__{
+            module: ExType.Type.Atom.t()
+          }
+    defstruct [:module]
+  end
+
+  defmodule GenericProtocol do
+    @type t :: %__MODULE__{
+            protocol: ExType.Type.Protocol.t(),
+            generic: ExType.Type.t()
+          }
+    defstruct [:protocol, :generic]
+  end
+
+  defmodule ProtocolImpl do
+    defstruct [:type, :generic]
   end
 
   defmodule Number do
@@ -69,14 +102,28 @@ defmodule ExType.Type do
     defstruct []
   end
 
-  defmodule Function do
+  defmodule AnyFunction do
+    @type t :: %__MODULE__{}
+
+    defstruct []
+  end
+
+  defmodule AnonymousFunction do
     @type t :: %__MODULE__{
-            args: [ExType.Type.t()],
+            args: [any()],
             body: any(),
             context: ExType.Context.t()
           }
 
     defstruct [:args, :body, :context]
+  end
+
+  defmodule TypedFunction do
+    @type t :: %__MODULE__{
+            inputs: [ExType.Type.t()],
+            output: ExType.Type.t()
+          }
+    defstruct [:inputs, :output]
   end
 
   defmodule List do
@@ -96,6 +143,7 @@ defmodule ExType.Type do
     defstruct [:key, :value]
   end
 
+  # Struct and TypedStruct ?
   defmodule Struct do
     @type t :: %__MODULE__{
             struct: atom(),
@@ -111,13 +159,21 @@ defmodule ExType.Type do
     defstruct []
   end
 
-  defmodule Pid do
+  defmodule PID do
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule Tuple do
+    @type t :: %__MODULE__{
+            types: [ExType.Type.t()]
+          }
+
+    defstruct [:types]
+  end
+
+  defmodule TypedTuple do
     @type t :: %__MODULE__{
             types: [ExType.Type.t()]
           }

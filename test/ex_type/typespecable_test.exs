@@ -18,12 +18,28 @@ defmodule ExType.TypespecableTest do
   end
 
   test "function" do
-    assert Typespecable.to_quote(%Type.Function{args: []}) == quote(do: (() -> any()))
+    any_type = %Type.Any{}
 
-    assert Typespecable.to_quote(%Type.Function{args: [1]}) == quote(do: (any() -> any()))
+    assert Typespecable.to_quote(%Type.TypedFunction{inputs: [], output: any_type}) ==
+             quote(do: (() -> any()))
 
-    assert Typespecable.to_quote(%Type.Function{args: [1, 2]}) ==
+    assert Typespecable.to_quote(%Type.TypedFunction{inputs: [any_type], output: any_type}) ==
+             quote(do: (any() -> any()))
+
+    assert Typespecable.to_quote(%Type.TypedFunction{
+             inputs: [any_type, any_type],
+             output: any_type
+           }) ==
              quote(do: (any(), any() -> any()))
+
+    integer = %Type.Number{kind: :integer}
+
+    typed_fn = %Type.TypedFunction{
+      inputs: [integer, integer],
+      output: integer
+    }
+
+    assert Typespecable.to_quote(typed_fn) == quote(do: (integer(), integer() -> integer()))
   end
 
   test "tuple" do

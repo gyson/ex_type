@@ -1,6 +1,15 @@
 # ExType
 
-**TODO: Add description**
+A type checker for Elixir.
+
+## Feature
+
+- gradual typing
+- type check for protocol and generic protocol
+- type check with intersection and union types
+- type guards
+- type assertion
+- type inspection
 
 ## Installation
 
@@ -19,3 +28,6 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex_type).
 
+## Note
+
+Use `MIX_ENV=test iex -S mix` to access test context.

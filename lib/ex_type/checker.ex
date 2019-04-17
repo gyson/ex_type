@@ -82,7 +82,7 @@ defmodule ExType.Checker do
         {:ok, val, _} = eval(x, context)
         val
       end)
-      |> union_types()
+      |> Typespec.union_types()
 
     {:ok, %Type.List{type: type}, context}
   end
@@ -112,7 +112,7 @@ defmodule ExType.Checker do
 
     {:ok, f, _} = eval(name, context)
 
-    %Type.Function{args: args, context: context, body: body} = f
+    %Type.AnonymousFunction{args: args, context: context, body: body} = f
 
     new_context =
       Enum.zip(args, args_values)
@@ -203,7 +203,7 @@ defmodule ExType.Checker do
     if Enum.empty?(unified_types) do
       Helper.eval_error(code, context)
     else
-      {:ok, union_types(unified_types), context}
+      {:ok, Typespec.union_types(unified_types), context}
     end
   end
 
@@ -211,7 +211,7 @@ defmodule ExType.Checker do
   def eval({:fn, _, [{:->, _, [args, body]}]}, context) do
     # lazy eval
     {:ok,
-     %Type.Function{
+     %Type.AnonymousFunction{
        args: args,
        body: body,
        context: context
@@ -265,7 +265,7 @@ defmodule ExType.Checker do
 
         result_type
       end
-      |> union_types()
+      |> Typespec.union_types()
 
     {:ok, unioned_type, context}
   end
@@ -289,7 +289,7 @@ defmodule ExType.Checker do
         {:ok, right_type, _} = eval(right, context)
         right_type
       end
-      |> union_types()
+      |> Typespec.union_types()
 
     {:ok, t, context}
   end
@@ -344,7 +344,7 @@ defmodule ExType.Checker do
         {:ok, type, _} = eval(right, new_context)
         type
       end
-      |> union_types()
+      |> Typespec.union_types()
 
     {:ok, t, context}
   end
@@ -390,7 +390,7 @@ defmodule ExType.Checker do
         if Enum.empty?(unified_types) do
           Helper.eval_error(code, context)
         else
-          {:ok, union_types(unified_types), context}
+          {:ok, Typespec.union_types(unified_types), context}
         end
 
       :error ->
@@ -436,26 +436,5 @@ defmodule ExType.Checker do
 
   def eval(code, context) do
     Helper.eval_error(code, context)
-  end
-
-  def union_types(types) do
-    types
-    |> Enum.flat_map(fn
-      %Type.Union{types: inner_types} ->
-        inner_types
-
-      other ->
-        [other]
-    end)
-    |> Enum.uniq()
-    |> case do
-      [one] ->
-        one
-
-      multi ->
-        # sort for easy quick comparison
-        sorted = Enum.sort(multi)
-        %Type.Union{types: sorted}
-    end
   end
 end

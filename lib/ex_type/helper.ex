@@ -71,6 +71,12 @@ defmodule ExType.Helper do
     end
   end
 
+  defmacro todo(message \\ "") do
+    quote do
+      raise "TODO #{unquote(message)} at #{__ENV__.file}:#{__ENV__.line}"
+    end
+  end
+
   def is_protocol(module) do
     try do
       module.__protocol__(:module)
