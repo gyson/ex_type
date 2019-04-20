@@ -353,10 +353,10 @@ defmodule ExType.Unification do
                 "Map"
             end
 
-          a = String.to_atom("Elixir.ExType.Typespec.#{protocol}.#{name}")
+          a = String.to_atom("#{protocol}.#{name}")
 
           case ExType.Typespec.from_beam_type(a, :t, 0) do
-            {:ok, {{:., _, [T, :impl]}, _, [l, r]}} ->
+            {:ok, _, {{:., _, [T, :impl]}, _, [l, r]}} ->
               {:ok, _, new_context} = unify_spec(l, type, context)
               {:ok, tt, _} = unify_spec(r, %Type.Any{}, new_context)
               {:ok, _, context} = unify_spec(right, tt, context)
@@ -372,7 +372,7 @@ defmodule ExType.Unification do
   def unify_spec({{:., _, [module, name]} = spec, _, args}, type, context)
       when is_atom(module) and is_atom(name) and is_list(args) do
     case Typespec.from_beam_type(module, name, length(args)) do
-      {:ok, ts} ->
+      {:ok, _, ts} ->
         unify_spec(ts, type, context)
 
       _ ->

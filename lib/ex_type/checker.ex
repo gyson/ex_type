@@ -142,7 +142,7 @@ defmodule ExType.Checker do
   # support T.assert
   def eval({{:., _, [ExType.T, :assert]}, _, [operator, left, escaped_right]} = code, context) do
     {right_spec, []} = Code.eval_quoted(escaped_right)
-    type_right = Typespec.eval_type(right_spec, context)
+    {:ok, type_right, _} = Unification.unify_spec(right_spec, %Type.Any{}, context)
 
     case operator do
       :== ->
@@ -176,6 +176,7 @@ defmodule ExType.Checker do
 
     unified_types =
       Typespec.from_beam_spec(module, name, length(args))
+      |> elem(1)
       |> Enum.flat_map(fn {inputs, output, _vars} ->
         # TODO: apply _vars for type bounding
         result =
@@ -353,15 +354,17 @@ defmodule ExType.Checker do
   def eval({name, meta, args} = code, context) when is_atom(name) and is_list(args) do
     arity = length(args)
 
-    # if it has specs for it, do not look at the function
-    case Map.fetch(context.specs, {name, arity}) do
-      {:ok, specs} ->
-        args_types =
-          Enum.map(args, fn arg ->
-            {:ok, type, _} = eval(arg, context)
-            type
-          end)
+    args_types =
+      Enum.map(args, fn arg ->
+        {:ok, type, _} = eval(arg, context)
+        type
+      end)
 
+    module = Helper.get_module(context.env.module)
+
+    # if it has specs for it, do not look at the function
+    case Typespec.from_beam_spec(module, name, length(args)) do
+      {:ok, specs} ->
         unified_types =
           specs
           |> Enum.flat_map(fn {inputs, output, _vars} ->
@@ -393,16 +396,10 @@ defmodule ExType.Checker do
           {:ok, Typespec.union_types(unified_types), context}
         end
 
-      :error ->
+      {:error, _} ->
         case Map.fetch(context.functions, {name, arity}) do
           {:ok, {fn_args, fn_body, fn_env}} ->
-            args_types =
-              Enum.map(args, fn arg ->
-                {:ok, type, _} = eval(arg, context)
-                type
-              end)
-
-            fn_context = %Context{env: fn_env, functions: context.functions, specs: context.specs}
+            fn_context = %Context{env: fn_env, functions: context.functions}
 
             fn_context =
               Enum.zip(fn_args, args_types)

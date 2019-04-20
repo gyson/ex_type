@@ -86,6 +86,11 @@ defmodule ExType.Helper do
         false
     end
   end
+
+  def get_module(module) do
+    ["ExType", "Module" | rest] = Module.split(module)
+    Module.concat(rest)
+  end
 end
 
 defimpl Inspect, for: Macro.Env do

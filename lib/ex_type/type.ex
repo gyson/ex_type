@@ -46,11 +46,14 @@ defmodule ExType.Type do
     defstruct [:types]
   end
 
-  defmodule TypeVariable do
+  defmodule SpecVariable do
     @type t :: %__MODULE__{
-            name: atom()
+            name: atom(),
+            type: Type.t(),
+            spec: {atom(), atom(), pos_integer()},
+            id: integer()
           }
-    defstruct [:name]
+    defstruct [:name, :type, :spec, :id]
   end
 
   defmodule Protocol do

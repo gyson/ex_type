@@ -35,6 +35,14 @@ defimpl Typespecable, for: Type.Intersection do
   end
 end
 
+defimpl Typespecable, for: Type.SpecVariable do
+  def to_quote(%Type.SpecVariable{name: name, spec: {module, _, _}}) do
+    quote do
+      unquote(Macro.var(name, module))
+    end
+  end
+end
+
 defimpl Typespecable, for: Type.Protocol do
   def to_quote(%Type.Protocol{module: module}) do
     quote do

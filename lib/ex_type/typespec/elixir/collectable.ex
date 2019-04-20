@@ -17,13 +17,13 @@ deftypespec Collectable.IO.Stream do
 end
 
 deftypespec Collectable.List do
-  # TODO
+  @type t(x) :: T.impl([x], x)
 end
 
 deftypespec Collectable.Map do
-  # TODO
+  @type t(k, v) :: T.impl(%{required(k) => v}, {k, v})
 end
 
 deftypespec Collectable.MapSet do
-  # TODO
+  @type t(x) :: T.impl(MapSet.t(x), x)
 end

@@ -27,5 +27,11 @@ deftypespec Enum do
 
   @spec join(T.p(Enumerable.t(), binary()), binary()) :: binary()
 
+  @spec into(T.p(Enumerable.t(), x), T.p(Collectable.t(), x)) :: T.p(Collectable.t(), x)
+        when x: any()
+
+  @spec into(T.p(Enumerable.t(), x), T.p(Collectable.t(), y), (x -> y)) :: T.p(Collectable.t(), y)
+        when x: any(), y: any()
+
   @spec zip(T.p(Enumerable.t(), x), T.p(Enumerable.t(), y)) :: [{x, y}] when x: any(), y: any()
 end

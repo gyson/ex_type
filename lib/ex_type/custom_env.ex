@@ -23,8 +23,8 @@ defmodule ExType.CustomEnv do
       defs
       # support mix type.only
       |> Enum.filter(fn {{name, _, args}, _} ->
-        ["ExType", "Module" | rest] = Module.split(env.module)
-        ExType.Filter.need_process?(env.file, Module.concat(rest), name, length(args))
+        module = ExType.Helper.get_module(env.module)
+        ExType.Filter.need_process?(env.file, module, name, length(args))
       end)
       # |> Helper.inspect
       |> Enum.map(fn {call, block} ->
@@ -147,7 +147,7 @@ defmodule ExType.CustomEnv do
         fn {_, args, result, vars} -> {args, result, vars} end
       )
 
-    context = %Context{env: caller_env, functions: functions, specs: spec_map}
+    context = %Context{env: caller_env, functions: functions}
 
     {types, context} =
       Enum.reduce(args, {[], context}, fn input, {acc, ctx} ->
