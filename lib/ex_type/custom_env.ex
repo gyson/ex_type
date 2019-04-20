@@ -12,8 +12,6 @@ defmodule ExType.CustomEnv do
         end
       end
 
-      # get all specs now
-      specs = get_attribute.(env.module, :spec)
       defs = get_attribute.(env.module, :ex_type_def)
       defps = get_attribute.(env.module, :ex_type_defp)
 
@@ -28,7 +26,7 @@ defmodule ExType.CustomEnv do
       end)
       # |> Helper.inspect
       |> Enum.map(fn {call, block} ->
-        ExType.CustomEnv.process_defs(call, block, env, specs, defps)
+        ExType.CustomEnv.process_defs(call, block, env, defps)
       end)
 
       quote(do: nil)
@@ -88,7 +86,7 @@ defmodule ExType.CustomEnv do
     Module.put_attribute(module, :ex_type_defp, {call, block})
   end
 
-  def process_defs(call, block, caller_env, specs, defps) do
+  def process_defs(call, block, caller_env, defps) do
     # save call and do block, and eval it
     {name, _meta, vars} = call
 
@@ -114,18 +112,9 @@ defmodule ExType.CustomEnv do
       |> Map.put(:function, {name, length(vars)})
       |> Map.put(:current_vars, current_vars)
 
-    {args, expected_result, _type_variables} =
-      specs
-      |> Enum.flat_map(fn {:spec, spec, _} ->
-        case ExType.Typespec.convert_beam_spec(spec) do
-          {^name, args, result, vars} ->
-            [{args, result, vars}]
+    module = Helper.get_module(caller_env.module)
 
-          _ ->
-            []
-        end
-      end)
-      |> Enum.at(0)
+    {:ok, [{args, expected_result, _}]} = Typespec.from_beam_spec(module, name, length(vars))
 
     # TODO: support multiple functions pattern match
     functions =
@@ -136,16 +125,6 @@ defmodule ExType.CustomEnv do
         {{fn_name, fn_arity}, {fn_args, fn_body, caller_env}}
       end)
       |> Enum.into(%{})
-
-    spec_map =
-      specs
-      |> Enum.map(fn {:spec, spec, _} ->
-        ExType.Typespec.convert_beam_spec(spec)
-      end)
-      |> Enum.group_by(
-        fn {name, args, _, _} -> {name, length(args)} end,
-        fn {_, args, result, vars} -> {args, result, vars} end
-      )
 
     context = %Context{env: caller_env, functions: functions}
 
