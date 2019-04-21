@@ -8,12 +8,11 @@ defmodule T do
   """
 
   # usage: T.&({a, b, c, d})
-  # note: use `x | any()` instead of `any()` to avoid compiler error
+  # note: use `any() | x` instead of `any()` to avoid compiler error
   @type (&x) :: any() | x
 
-  # T.p(Enumerable.t, x)
-  # equvalent to Enumerable.t(x)
-  # shortcut for protocol
+  # T.p(Enumerable, x)
+  # note: use `any() | x | y` instead of `any()` to avoid compiler error
   @type p(x, y) :: any() | x | y
 
   @doc """
