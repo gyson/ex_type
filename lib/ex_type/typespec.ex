@@ -293,7 +293,7 @@ defmodule ExType.Typespec do
       [] ->
         Helper.todo()
 
-      [{{:required, _, [key_type]}, value_type}] ->
+      [{{header, _, [key_type]}, value_type}] when header in [:required, :optional] ->
         %Type.Map{
           key: eval_type(key_type, context),
           value: eval_type(value_type, context)
@@ -302,8 +302,22 @@ defmodule ExType.Typespec do
   end
 
   # struct
-  def eval_type({:%, _, [_module, {%{}, _, _args}]}, _context) do
-    Helper.todo()
+  def eval_type({:%, _, [struct, {:%{}, _, args}]}, context) when is_atom(struct) do
+    if Helper.is_struct(struct) do
+      types =
+        args
+        |> Enum.map(fn {key, value} ->
+          {key, eval_type(value, context)}
+        end)
+        |> Enum.into(%{})
+
+      %Type.Struct{
+        struct: struct,
+        types: types
+      }
+    else
+      raise ArgumentError, "#{struct} is not struct"
+    end
   end
 
   def eval_type({:{}, _, args}, context) do
@@ -391,16 +405,7 @@ defmodule ExType.Typespec do
   end
 
   def eval_type({:keyword, meta, [t]}, context) do
-    eval_type(
-      [
-        {:{}, meta,
-         [
-           eval_type({:atom, meta, []}, context),
-           eval_type(t, context)
-         ]}
-      ],
-      context
-    )
+    eval_type([{:{}, meta, [{:atom, meta, []}, t]}], context)
   end
 
   def eval_type({:list, meta, []}, context) do
@@ -433,8 +438,6 @@ defmodule ExType.Typespec do
       eval_type({:float, meta, []}, context)
     ])
   end
-
-  # TODO: struct
 
   def eval_type({:timeout, meta, []}, context) do
     union_types([
@@ -491,6 +494,10 @@ defmodule ExType.Typespec do
     end
   end
 
+  def eval_type({:::, _, [_, right]}, context) do
+    eval_type(right, context)
+  end
+
   # union type
 
   def eval_type({:|, _, [left, right]}, context) do
@@ -530,11 +537,11 @@ defmodule ExType.Typespec do
   end
 
   def eval_type(type, context) do
-    Helper.inspect(%{
-      error: :eval_type,
-      type: type,
-      context: context
-    })
+    raise Helper.inspect(%{
+            error: :eval_type,
+            type: type,
+            context: context
+          })
 
     Helper.todo("cannot match eval_type")
   end
@@ -662,6 +669,22 @@ defmodule ExType.Typespec do
     end
   end
 
+  def match_typespec(%Type.Protocol{module: module}, type, context) do
+    # TODO: more cases...
+    name =
+      case type do
+        %Type.BitString{} ->
+          BitString
+      end
+
+    mod = Module.concat([module, name])
+
+    case Code.ensure_compiled?(mod) do
+      true ->
+        {:ok, type, context}
+    end
+  end
+
   def match_typespec(%Type.GenericProtocol{module: module, generic: generic}, type, context) do
     name =
       case type do
@@ -718,7 +741,7 @@ defmodule ExType.Typespec do
     )
   end
 
-  def match_typespec(%Type.Union{types: union_types} = union, type, context) do
+  def match_typespec(%Type.Union{types: union_types}, type, context) do
     # match spec with each type of it
     Enum.reduce_while(union_types, {:error, "not match with union"}, fn union_type, acc ->
       case match_typespec(union_type, type, context) do

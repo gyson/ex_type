@@ -36,8 +36,22 @@ defmodule ExType.Checker do
     {:ok, %Type.BitString{kind: :bitstring}, context}
   end
 
-  def eval({:%, _, [struct, {:%{}, _, _args}]}, context) do
-    {:ok, %Type.Struct{struct: struct}, context}
+  def eval({:%, _, [struct, {:%{}, _, args}]} = code, context) do
+    if Helper.is_struct(struct) do
+      types =
+        args
+        |> Enum.map(fn {key, value} ->
+          {:ok, value_type, _} = eval(value, context)
+          {key, value_type}
+        end)
+        |> Enum.into(%{})
+
+      # TODO: check if all types match with typespec
+
+      {:ok, %Type.Struct{struct: struct, types: types}, context}
+    else
+      Helper.eval_error(code, context)
+    end
   end
 
   # binary literal

@@ -144,3 +144,17 @@ defimpl Typespecable, for: Type.BitString do
     end
   end
 end
+
+defimpl Typespecable, for: Type.Struct do
+  def to_quote(%Type.Struct{struct: struct, types: types}) do
+    quote do
+      %unquote(struct){
+        unquote_splicing(
+          Enum.map(types, fn {key, value} ->
+            {key, Typespecable.to_quote(value)}
+          end)
+        )
+      }
+    end
+  end
+end

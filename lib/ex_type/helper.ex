@@ -75,6 +75,16 @@ defmodule ExType.Helper do
     end
   end
 
+  def is_struct(module) do
+    try do
+      module.__struct__()
+      true
+    rescue
+      UndefinedFunctionError ->
+        false
+    end
+  end
+
   def get_module(module) do
     ["ExType", "Module" | rest] = Module.split(module)
     Module.concat(rest)

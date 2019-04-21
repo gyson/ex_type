@@ -1,3 +1,11 @@
+defmodule ExType.Example.Foo.StructExample do
+  @type t() :: %__MODULE__{
+          hi: binary(),
+          ok: integer()
+        }
+  defstruct [:hi, :ok]
+end
+
 defmodule ExType.Example.Foo do
   require T
 
@@ -136,5 +144,15 @@ defmodule ExType.Example.Foo do
       {x, y, z} when is_integer(x) and is_float(y) and is_atom(z) ->
         {x, y, z}
     end
+  end
+
+  @spec struct() :: ExType.Example.Foo.StructExample.t()
+
+  def struct() do
+    %ExType.Example.Foo.StructExample{
+      hi: "yes",
+      ok: 123
+    }
+    |> T.inspect()
   end
 end
