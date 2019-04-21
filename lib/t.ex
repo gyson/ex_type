@@ -11,10 +11,6 @@ defmodule T do
   # note: use `x | any()` instead of `any()` to avoid compiler error
   @type (&x) :: any() | x
 
-  # usage, when implement Enumerable for map
-  # @type t :: T.impl(%{k => v}, {k, v})
-  @type impl(x, y) :: any() | x | y
-
   # usage: T.opaque()
   @type opaque() :: any()
 

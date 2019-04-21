@@ -73,10 +73,6 @@ defmodule ExType.Type do
     defstruct [:module, :generic]
   end
 
-  defmodule ProtocolImpl do
-    defstruct [:type, :generic]
-  end
-
   defmodule Number do
     @type t :: %__MODULE__{
             kind:

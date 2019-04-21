@@ -84,10 +84,10 @@ deftypespec Enum do
 
   @spec intersperse(T.p(Enumerable, x), y) :: [x | y] when x: any(), y: any()
 
-  @spec into(T.p(Enumerable, x), T.p(Collectable.t(), x)) :: T.p(Collectable.t(), x)
+  @spec into(T.p(Enumerable, x), T.p(Collectable, x)) :: T.p(Collectable, x)
         when x: any()
 
-  @spec into(T.p(Enumerable, x), T.p(Collectable.t(), y), (x -> y)) :: T.p(Collectable.t(), y)
+  @spec into(T.p(Enumerable, x), T.p(Collectable, y), (x -> y)) :: T.p(Collectable, y)
         when x: any(), y: any()
 
   @spec join(T.p(Enumerable, String.Chars.t())) :: String.t()

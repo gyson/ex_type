@@ -17,13 +17,13 @@ deftypespec Collectable.IO.Stream do
 end
 
 deftypespec Collectable.List do
-  @type t(x) :: T.impl([x], x)
+  @spec ex_type_impl([x]) :: x when x: any()
 end
 
 deftypespec Collectable.Map do
-  @type t(k, v) :: T.impl(%{required(k) => v}, {k, v})
+  @spec ex_type_impl(%{required(k) => v}) :: {k, v} when k: any(), v: any()
 end
 
 deftypespec Collectable.MapSet do
-  @type t(x) :: T.impl(MapSet.t(x), x)
+  @spec ex_type_impl(MapSet.t(x)) :: x when x: any()
 end

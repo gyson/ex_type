@@ -470,13 +470,6 @@ defmodule ExType.Typespec do
     }
   end
 
-  def eval_type({{:., _, [T, :impl]}, _, [left, right]}, context) do
-    %Type.ProtocolImpl{
-      type: eval_type(left, context),
-      generic: eval_type(right, context)
-    }
-  end
-
   def eval_type({{:., _, [module, name]}, _, args}, context)
       when is_atom(module) and is_atom(name) and is_list(args) do
     if Helper.is_protocol(module) and name == :t and args == [] do
