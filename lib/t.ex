@@ -11,12 +11,6 @@ defmodule T do
   # note: use `x | any()` instead of `any()` to avoid compiler error
   @type (&x) :: any() | x
 
-  # usage: T.opaque()
-  @type opaque() :: any()
-
-  # usage: T.opaque(x) or T.opaque({a, b, c})
-  @type opaque(x) :: any() | x
-
   # T.p(Enumerable.t, x)
   # equvalent to Enumerable.t(x)
   # shortcut for protocol
