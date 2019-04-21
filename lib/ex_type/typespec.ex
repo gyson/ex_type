@@ -717,6 +717,9 @@ defmodule ExType.Typespec do
       {:ok, output} ->
         # Helper.inspect {generic, output}
         match_typespec(generic, output, context)
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -749,7 +752,7 @@ defmodule ExType.Typespec do
     # match spec with each type of it
     Enum.reduce_while(union_types, {:error, "not match with union"}, fn union_type, acc ->
       case match_typespec(union_type, type, context) do
-        {:ok, _, _} ->
+        {:ok, _, context} ->
           {:halt, {:ok, type, context}}
 
         {:error, _} ->
@@ -789,7 +792,13 @@ defmodule ExType.Typespec do
   end
 
   def resolve_typespec(%Type.SpecVariable{} = sv, map) do
-    Map.fetch!(map, sv)
+    case Map.fetch(map, sv) do
+      {:ok, type} ->
+        type
+
+      :error ->
+        sv.type
+    end
   end
 
   def resolve_typespec(%Type.List{type: type}, map) do

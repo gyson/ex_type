@@ -21,7 +21,18 @@ defmodule ExType.Typespec.Elixir.EnumTestCase do
 
     T.assert(Enum.concat([x, z]) == [integer()])
 
-    # TODO: test Enum.flat_map_reduce
+    T.assert(
+      Enum.flat_map_reduce(x, 1.1, fn i, acc ->
+        {[i + 1], acc + i}
+      end) == {[integer()], float()}
+    )
+
+    T.assert(
+      Enum.flat_map_reduce(x, 1.1, fn _i, acc ->
+        {:halt, acc}
+      end) == {[any()], float()}
+    )
+
     # TODO: test Enum.into
   end
 end
