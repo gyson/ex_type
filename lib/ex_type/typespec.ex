@@ -822,6 +822,13 @@ defmodule ExType.Typespec do
     }
   end
 
+  def resolve_typespec(%Type.Map{key: key, value: value}, map) do
+    %Type.Map{
+      key: resolve_typespec(key, map),
+      value: resolve_typespec(value, map)
+    }
+  end
+
   # ... more ...
 
   def resolve_typespec(type, _) do

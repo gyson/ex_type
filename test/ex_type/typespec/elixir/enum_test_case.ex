@@ -33,6 +33,6 @@ defmodule ExType.Typespec.Elixir.EnumTestCase do
       end) == {[any()], float()}
     )
 
-    # TODO: test Enum.into
+    T.assert(Enum.into([{"hello", 123}], %{}) == %{required(binary()) => integer()})
   end
 end
