@@ -13,7 +13,7 @@ deftypespec Enum do
 
   @spec at(T.p(Enumerable, x), integer(), y) :: x | y when x: any(), y: any()
 
-  @spec chunk_by(T.p(Enumerable, x), (x -> boolean())) :: [[x]] when x: any()
+  @spec chunk_by(T.p(Enumerable, x), (x -> any())) :: [[x]] when x: any()
 
   @spec chunk_every(T.p(Enumerable, x), pos_integer()) :: [[x]] when x: any()
 
@@ -152,9 +152,9 @@ deftypespec Enum do
   @spec reverse_slice(T.p(Enumerable, x), non_neg_integer(), non_neg_integer()) :: [x]
         when x: any()
 
-  @spec scan(T.p(Enumerable, x), (x, y -> y)) :: [x] when x: any(), y: any()
+  @spec scan(T.p(Enumerable, x), (x, x -> x)) :: [x] when x: any()
 
-  @spec scan(T.p(Enumerable, x), acc, (x, acc -> acc)) :: [x] when x: any(), acc: any()
+  @spec scan(T.p(Enumerable, x), x, (x, x -> x)) :: [x] when x: any()
 
   @spec shuffle(T.p(Enumerable, x)) :: [x] when x: any()
 
