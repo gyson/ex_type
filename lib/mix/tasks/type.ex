@@ -8,8 +8,20 @@ defmodule Mix.Tasks.Type do
     end
   end
 
-  @doc false
-  def get_files() do
+  # `mix type Enum` for single module
+  # `mix type Enum.map` for single function
+  # `mix type Enum.map/2` for single function with specified arity
+  def run([filter]) when is_binary(filter) do
+    filter = ExType.Filter.parse(filter)
+
+    # could run in parallel
+    for file <- get_files() do
+      ExType.Filter.register_filter(file, filter)
+      ExType.check(file)
+    end
+  end
+
+  defp get_files() do
     cwd = File.cwd!()
 
     type_exs = Path.join(cwd, "type.exs")

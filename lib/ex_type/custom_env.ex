@@ -19,7 +19,7 @@ defmodule ExType.CustomEnv do
 
       # check each defs should have spec.
       defs
-      # support mix type.only
+      # support "mix type" with filter
       |> Enum.filter(fn {{name, _, args}, _} ->
         module = ExType.Helper.get_module(env.module)
         ExType.Filter.need_process?(env.file, module, name, length(args))
