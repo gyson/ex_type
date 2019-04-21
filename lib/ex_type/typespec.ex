@@ -320,6 +320,10 @@ defmodule ExType.Typespec do
     end
   end
 
+  def eval_type({first, second}, context) do
+    eval_type({:{}, [], [first, second]}, context)
+  end
+
   def eval_type({:{}, _, args}, context) do
     %Type.TypedTuple{
       types: Enum.map(args, &eval_type(&1, context))
@@ -537,11 +541,11 @@ defmodule ExType.Typespec do
   end
 
   def eval_type(type, context) do
-    raise Helper.inspect(%{
-            error: :eval_type,
-            type: type,
-            context: context
-          })
+    Helper.inspect(%{
+      error: :eval_type,
+      type: type,
+      context: context
+    })
 
     Helper.todo("cannot match eval_type")
   end
