@@ -20,23 +20,15 @@ deftypespec Enumerable.IO.Stream do
 end
 
 deftypespec Enumerable.List do
-  @type x :: any()
-
-  @type t :: T.impl([x], x)
+  @spec ex_type_impl([x]) :: x when x: any()
 end
 
 deftypespec Enumerable.Map do
-  @type k :: any()
-
-  @type v :: any()
-
-  @type t :: T.impl(%{required(k) => v}, {k, v})
+  @spec ex_type_impl(%{required(k) => v}) :: {k, v} when k: any(), v: any()
 end
 
 deftypespec Enumerable.MapSet do
-  @type x :: any()
-
-  @type t :: T.impl(MapSet.t(x), x)
+  @spec ex_type_impl(MapSet.t(x)) :: x when x: any()
 end
 
 deftypespec Enumerable.Range do

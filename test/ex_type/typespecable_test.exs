@@ -43,6 +43,6 @@ defmodule ExType.TypespecableTest do
   end
 
   test "tuple" do
-    assert Typespecable.to_quote(%Type.Tuple{types: [%Type.Any{}]}) == quote(do: {any()})
+    assert Typespecable.to_quote(%Type.TypedTuple{types: [%Type.Any{}]}) == quote(do: {any()})
   end
 end

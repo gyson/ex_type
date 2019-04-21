@@ -52,9 +52,9 @@ defimpl Typespecable, for: Type.Protocol do
 end
 
 defimpl Typespecable, for: Type.GenericProtocol do
-  def to_quote(%Type.GenericProtocol{protocol: protocol, generic: generic}) do
+  def to_quote(%Type.GenericProtocol{module: module, generic: generic}) do
     quote do
-      T.p(unquote(protocol.module).t(), unquote(ExType.Typespecable.to_quote(generic)))
+      T.p(unquote(module), unquote(ExType.Typespecable.to_quote(generic)))
     end
   end
 end
@@ -87,8 +87,8 @@ defimpl Typespecable, for: Type.AnyFunction do
   end
 end
 
-defimpl Typespecable, for: Type.AnonymousFunction do
-  def to_quote(%Type.AnonymousFunction{args: args}) do
+defimpl Typespecable, for: Type.RawFunction do
+  def to_quote(%Type.RawFunction{args: args}) do
     quoted_anys = List.duplicate(quote(do: any()), length(args))
 
     quote do
@@ -127,8 +127,8 @@ defimpl Typespecable, for: Type.Map do
   end
 end
 
-defimpl Typespecable, for: Type.Tuple do
-  def to_quote(%Type.Tuple{types: types}) do
+defimpl Typespecable, for: Type.TypedTuple do
+  def to_quote(%Type.TypedTuple{types: types}) do
     quoted_types = Enum.map(types, &Typespecable.to_quote/1)
 
     quote do

@@ -12,15 +12,17 @@ defmodule ExType.Type do
           | ExType.Type.Reference.t()
           | ExType.Type.Function.t()
           | ExType.Type.AnyFunction.t()
-          | ExType.Type.AnonymousFunction.t()
+          | ExType.Type.RawFunction.t()
           | ExType.Type.TypedFunction.t()
           | ExType.Type.Port.t()
           | ExType.Type.PID.t()
-          # use AnyTuple ?
-          | ExType.Type.Tuple.t()
+          | ExType.Type.AnyTuple.t()
           | ExType.Type.TypedTuple.t()
+
+          # Map.Empty
           | ExType.Type.Map.t()
           | ExType.Type.Struct.t()
+          # List.Empty
           | ExType.Type.List.t()
           | ExType.Type.BitString.t()
 
@@ -65,10 +67,10 @@ defmodule ExType.Type do
 
   defmodule GenericProtocol do
     @type t :: %__MODULE__{
-            protocol: ExType.Type.Protocol.t(),
+            module: atom(),
             generic: ExType.Type.t()
           }
-    defstruct [:protocol, :generic]
+    defstruct [:module, :generic]
   end
 
   defmodule ProtocolImpl do
@@ -111,7 +113,7 @@ defmodule ExType.Type do
     defstruct []
   end
 
-  defmodule AnonymousFunction do
+  defmodule RawFunction do
     @type t :: %__MODULE__{
             args: [any()],
             body: any(),
@@ -136,6 +138,10 @@ defmodule ExType.Type do
 
     defstruct [:type]
   end
+
+  # StructLikeMap
+  # Map.StructLike => it's map, not struct, but it has all atom as key,
+  #                   so it's struct like map
 
   defmodule Map do
     @type t :: %__MODULE__{
@@ -168,12 +174,10 @@ defmodule ExType.Type do
     defstruct []
   end
 
-  defmodule Tuple do
-    @type t :: %__MODULE__{
-            types: [ExType.Type.t()]
-          }
+  defmodule AnyTuple do
+    @type t :: %__MODULE__{}
 
-    defstruct [:types]
+    defstruct []
   end
 
   defmodule TypedTuple do

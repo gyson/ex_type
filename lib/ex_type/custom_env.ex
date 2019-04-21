@@ -88,11 +88,11 @@ defmodule ExType.CustomEnv do
 
   def process_defs(call, block, caller_env, defps) do
     # save call and do block, and eval it
-    {name, _meta, vars} = call
+    {name, _meta, args} = call
 
     # make `:elixir_expand.expand` works as expected
     current_vars =
-      vars
+      args
       |> Macro.postwalk([], fn
         {name, meta, ctx} = it, acc when is_atom(name) and is_atom(ctx) ->
           {it, [{name, meta, ctx} | acc]}
@@ -109,12 +109,10 @@ defmodule ExType.CustomEnv do
     # update env
     caller_env =
       caller_env
-      |> Map.put(:function, {name, length(vars)})
+      |> Map.put(:function, {name, length(args)})
       |> Map.put(:current_vars, current_vars)
 
     module = Helper.get_module(caller_env.module)
-
-    {:ok, [{args, expected_result, _}]} = Typespec.from_beam_spec(module, name, length(vars))
 
     # TODO: support multiple functions pattern match
     functions =
@@ -128,20 +126,7 @@ defmodule ExType.CustomEnv do
 
     context = %Context{env: caller_env, functions: functions}
 
-    {types, context} =
-      Enum.reduce(args, {[], context}, fn input, {acc, ctx} ->
-        {:ok, type, ctx} = ExType.Unification.unify_spec(input, %ExType.Type.Any{}, ctx)
-        {acc ++ [type], ctx}
-      end)
-
-    context =
-      Enum.zip(vars, types)
-      |> Enum.reduce(context, fn {var, type}, context ->
-        {:ok, _, context} = ExType.Unification.unify_pattern(var, type, context)
-        context
-      end)
-
-    final_result =
+    body =
       block
       |> Macro.postwalk(fn
         # support T.inspect
@@ -161,21 +146,24 @@ defmodule ExType.CustomEnv do
       end)
       |> :elixir_expand.expand(caller_env)
       |> elem(0)
-      # |> Helper.inspect()
-      |> ExType.Checker.eval(context)
-      |> case do
-        {:ok, result, _new_context} ->
-          result
-      end
 
-    # if it can match
-    case ExType.Unification.unify_spec(expected_result, final_result, context) do
+    raw_fn = %Type.RawFunction{args: args, body: body, context: context}
+
+    {:ok, [{inputs, output, map}]} = Typespec.get_spec(module, name, length(args))
+
+    fn_typespec = %Type.TypedFunction{
+      inputs: inputs,
+      output: output
+    }
+
+    path_name = "#{module}.#{name}/#{length(args)}"
+
+    case Typespec.match_typespec(fn_typespec, raw_fn, map) do
       {:ok, type, _} ->
-        <<"Elixir.ExType.Module.", module_name::binary>> = Atom.to_string(caller_env.module)
-        Helper.inspect({:match, "#{module_name}.#{name}/#{length(vars)}", type})
+        Helper.inspect({:match, path_name, type})
 
-      {:error, _} ->
-        Helper.inspect({:not_match, name, expected_result, final_result})
+      {:error, error} ->
+        Helper.inspect({:not_match, path_name, error})
     end
   end
 end

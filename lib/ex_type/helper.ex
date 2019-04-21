@@ -25,18 +25,6 @@ defmodule ExType.Helper do
     end
   end
 
-  defmacro spec_error(spec, type, context) do
-    quote do
-      {:error,
-       %ExType.Unification.SpecError{
-         spec: unquote(spec),
-         type: unquote(type),
-         context: unquote(context),
-         line: "#{__ENV__.file}:#{__ENV__.line}"
-       }}
-    end
-  end
-
   defmacro pattern_error(pattern, type, context) do
     quote do
       {:error,

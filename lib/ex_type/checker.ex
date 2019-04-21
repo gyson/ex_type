@@ -15,7 +15,7 @@ defmodule ExType.Checker do
 
   def eval({:%{}, _, args}, context) when is_list(args) do
     case eval(args, context) do
-      {:ok, %Type.List{type: %Type.Tuple{types: [left, right]}}, _} ->
+      {:ok, %Type.List{type: %Type.TypedTuple{types: [left, right]}}, _} ->
         {:ok, %Type.Map{key: left, value: right}, context}
     end
   end
@@ -100,7 +100,7 @@ defmodule ExType.Checker do
         val
       end)
 
-    {:ok, %Type.Tuple{types: types}, context}
+    {:ok, %Type.TypedTuple{types: types}, context}
   end
 
   def eval({{:., _, [name]}, _, args}, context) do
@@ -112,7 +112,7 @@ defmodule ExType.Checker do
 
     {:ok, f, _} = eval(name, context)
 
-    %Type.AnonymousFunction{args: args, context: context, body: body} = f
+    %Type.RawFunction{args: args, context: context, body: body} = f
 
     new_context =
       Enum.zip(args, args_values)
@@ -142,7 +142,9 @@ defmodule ExType.Checker do
   # support T.assert
   def eval({{:., _, [ExType.T, :assert]}, _, [operator, left, escaped_right]} = code, context) do
     {right_spec, []} = Code.eval_quoted(escaped_right)
-    {:ok, type_right, _} = Unification.unify_spec(right_spec, %Type.Any{}, context)
+
+    # TODO: maybe use map from the context ?
+    type_right = Typespec.eval_type(right_spec, %{})
 
     case operator do
       :== ->
@@ -166,7 +168,7 @@ defmodule ExType.Checker do
   end
 
   # eralng module, e.g. :erlang.binary_to_term
-  def eval({{:., _, [module, name]}, _, args} = code, context)
+  def eval({{:., _, [module, name]}, _, args}, context)
       when is_atom(module) and is_atom(name) do
     args_types =
       Enum.map(args, fn arg ->
@@ -174,37 +176,9 @@ defmodule ExType.Checker do
         arg_type
       end)
 
-    unified_types =
-      Typespec.from_beam_spec(module, name, length(args))
-      |> elem(1)
-      |> Enum.flat_map(fn {inputs, output, _vars} ->
-        # TODO: apply _vars for type bounding
-        result =
-          Enum.zip(inputs, args_types)
-          |> Enum.reduce_while(context, fn {input, arg_type}, acc_context ->
-            case Unification.unify_spec(input, arg_type, acc_context) do
-              {:ok, _type, new_context} ->
-                {:cont, new_context}
-
-              {:error, error} ->
-                {:halt, {:error, error}}
-            end
-          end)
-
-        case result do
-          {:error, _error} ->
-            []
-
-          context ->
-            {:ok, type, _} = Unification.unify_spec(output, %Type.Any{}, context)
-            [type]
-        end
-      end)
-
-    if Enum.empty?(unified_types) do
-      Helper.eval_error(code, context)
-    else
-      {:ok, Typespec.union_types(unified_types), context}
+    case Typespec.eval_spec(module, name, args_types) do
+      {:ok, output} ->
+        {:ok, output, context}
     end
   end
 
@@ -212,7 +186,7 @@ defmodule ExType.Checker do
   def eval({:fn, _, [{:->, _, [args, body]}]}, context) do
     # lazy eval
     {:ok,
-     %Type.AnonymousFunction{
+     %Type.RawFunction{
        args: args,
        body: body,
        context: context
@@ -299,21 +273,29 @@ defmodule ExType.Checker do
   def eval({:for, _, args}, context) do
     case args do
       [{:<-, _, [left, right]}, [do: expr]] ->
-        with {:ok, type, _} <- eval(right, context),
-             # need to get Enumerable out
-             {:ok, _, type_variable: %{x: x_type}} <-
-               Unification.unify_spec(
-                 {{:., [], [T, :p]}, [],
-                  [{{:., [], [Enumerable, :t]}, [], []}, {:x, [], Elixir}]},
-                 type,
-                 context
-               ),
-             {:ok, _, new_context} <- Unification.unify_pattern(left, x_type, context),
-             {:ok, type, _} <- eval(expr, new_context) do
-          {:ok, %Type.List{type: type}, context}
-        else
-          error -> error
-        end
+        {:ok, right_type, _} = eval(right, context)
+
+        generic = %Type.SpecVariable{
+          name: :ex_type_for,
+          type: %Type.Any{},
+          spec: {nil, nil, 0},
+          id: :erlang.unique_integer()
+        }
+
+        {:ok, _, map} =
+          Typespec.match_typespec(
+            %Type.GenericProtocol{module: Enumerable, generic: generic},
+            right_type,
+            %{}
+          )
+
+        generic_type = Map.fetch!(map, generic)
+
+        {:ok, _, new_context} = Unification.unify_pattern(left, generic_type, context)
+
+        {:ok, type, _} = eval(expr, new_context)
+
+        {:ok, %Type.List{type: type}, context}
     end
   end
 
@@ -362,39 +344,9 @@ defmodule ExType.Checker do
 
     module = Helper.get_module(context.env.module)
 
-    # if it has specs for it, do not look at the function
-    case Typespec.from_beam_spec(module, name, length(args)) do
-      {:ok, specs} ->
-        unified_types =
-          specs
-          |> Enum.flat_map(fn {inputs, output, _vars} ->
-            result =
-              Enum.zip(inputs, args_types)
-              |> Enum.reduce_while(context, fn {input, arg_type}, acc_context ->
-                case Unification.unify_spec(input, arg_type, acc_context) do
-                  {:ok, _type, new_context} ->
-                    {:cont, new_context}
-
-                  {:error, error} ->
-                    {:halt, {:error, error}}
-                end
-              end)
-
-            case result do
-              {:error, _error} ->
-                []
-
-              context ->
-                {:ok, type, _} = Unification.unify_spec(output, %Type.Any{}, context)
-                [type]
-            end
-          end)
-
-        if Enum.empty?(unified_types) do
-          Helper.eval_error(code, context)
-        else
-          {:ok, Typespec.union_types(unified_types), context}
-        end
+    case Typespec.eval_spec(module, name, args_types) do
+      {:ok, output} ->
+        {:ok, output, context}
 
       {:error, _} ->
         case Map.fetch(context.functions, {name, arity}) do

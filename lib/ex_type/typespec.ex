@@ -228,7 +228,7 @@ defmodule ExType.Typespec do
   end
 
   def eval_type({:tuple, _, []}, _) do
-    %Type.Tuple{}
+    %Type.AnyTuple{}
   end
 
   def eval_type({:float, _, []}, _) do
@@ -264,7 +264,7 @@ defmodule ExType.Typespec do
     Helper.todo()
   end
 
-  def eval_type({:->, _, [inputs, output]}, context) when is_list(inputs) do
+  def eval_type([{:->, _, [inputs, output]}], context) when is_list(inputs) do
     case inputs do
       [{:..., _, _}] ->
         %Type.AnyFunction{}
@@ -288,7 +288,7 @@ defmodule ExType.Typespec do
   # TODO: support other list types
 
   # map
-  def eval_type({%{}, _, args}, context) do
+  def eval_type({:%{}, _, args}, context) do
     case args do
       [] ->
         Helper.todo()
@@ -307,7 +307,7 @@ defmodule ExType.Typespec do
   end
 
   def eval_type({:{}, _, args}, context) do
-    %Type.Tuple{
+    %Type.TypedTuple{
       types: Enum.map(args, &eval_type(&1, context))
     }
   end
@@ -407,6 +407,11 @@ defmodule ExType.Typespec do
     eval_type([{:any, meta, []}], context)
   end
 
+  def eval_type({:maybe_improper_list, meta, [_type1, _type2]}, context) do
+    # TODO: fix this
+    eval_type([{:any, meta, []}], context)
+  end
+
   # TODO: nonempty_list
   # TODO: maybe_improper_list
   # TODO: nonempty_maybe_improper_list
@@ -451,17 +456,11 @@ defmodule ExType.Typespec do
     end
   end
 
-  def eval_type({{:., _, [T, :p]}, _, [left, right]}, context) do
-    case eval_type(left, context) do
-      %Type.Protocol{} = protocol ->
-        %Type.GenericProtocol{
-          protocol: protocol,
-          generic: eval_type(right, context)
-        }
-
-      _ ->
-        Helper.todo("error message")
-    end
+  def eval_type({{:., _, [T, :p]}, _, [module, right]}, context) when is_atom(module) do
+    %Type.GenericProtocol{
+      module: module,
+      generic: eval_type(right, context)
+    }
   end
 
   def eval_type({{:., _, [T, :impl]}, _, [left, right]}, context) do
@@ -538,5 +537,265 @@ defmodule ExType.Typespec do
     })
 
     Helper.todo("cannot match eval_type")
+  end
+
+  def get_spec(module, name, arity) do
+    case from_beam_spec(module, name, arity) do
+      {:ok, specs} ->
+        result =
+          Enum.map(specs, fn {inputs, output, raw_vars} ->
+            empty_context = {module, %{}}
+
+            spec_vars =
+              raw_vars
+              |> Enum.map(fn {var, expr} ->
+                {var,
+                 %Type.SpecVariable{
+                   name: var,
+                   type: eval_type(expr, empty_context),
+                   spec: {module, name, arity},
+                   id: :erlang.unique_integer()
+                 }}
+              end)
+              |> Enum.into(%{})
+
+            new_context = {module, spec_vars}
+
+            input_types = Enum.map(inputs, &eval_type(&1, new_context))
+            output_type = eval_type(output, new_context)
+
+            {input_types, output_type, Map.values(spec_vars)}
+          end)
+
+        {:ok, result}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def eval_spec(module, name, input_types) do
+    case get_spec(module, name, length(input_types)) do
+      {:ok, specs} ->
+        result_types =
+          specs
+          |> Enum.flat_map(fn {inputs, output, _} ->
+            case match_typespec_list(inputs, input_types, %{}, fn x -> x end) do
+              {:ok, _, new_map} ->
+                [Typespec.resolve_typespec(output, new_map)]
+
+              {:error, _} ->
+                []
+            end
+          end)
+
+        if Enum.empty?(result_types) do
+          {:error, "not match any"}
+        else
+          {:ok, union_types(result_types)}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def match_typespec(type, type, context) do
+    {:ok, type, context}
+  end
+
+  def match_typespec(%Type.Any{}, _, context) do
+    {:ok, %Type.Any{}, context}
+  end
+
+  def match_typespec(typespec, %Type.Any{}, context) do
+    {:ok, typespec, context}
+  end
+
+  def match_typespec(%Type.SpecVariable{type: constraint} = sv, type, context) do
+    case constraint do
+      %Type.Any{} ->
+        {:ok, type, Map.put(context, sv, type)}
+    end
+  end
+
+  def match_typespec(
+        %Type.TypedTuple{types: left_types},
+        %Type.TypedTuple{types: right_types},
+        context
+      ) do
+    match_typespec_list(left_types, right_types, context, fn types ->
+      %Type.TypedTuple{types: types}
+    end)
+  end
+
+  def match_typespec(%Type.Atom{literal: false} = spec, %Type.Atom{}, context) do
+    {:ok, spec, context}
+  end
+
+  def match_typespec(
+        %Type.TypedFunction{inputs: inputs, output: output},
+        %Type.RawFunction{args: args, body: body, context: fn_context},
+        context
+      )
+      when length(inputs) == length(args) do
+    # need to resolve inputs ? then, make sure it's concrete type ?
+    resolved_inputs = Enum.map(inputs, &resolve_typespec(&1, context))
+
+    new_fn_context =
+      Enum.zip(args, resolved_inputs)
+      |> Enum.reduce(fn_context, fn {arg, resolved_input}, fn_context ->
+        {:ok, _, fn_context} = ExType.Unification.unify_pattern(arg, resolved_input, fn_context)
+        fn_context
+      end)
+
+    # TODO: type guards
+
+    {:ok, result_type, _} = ExType.Checker.eval(body, new_fn_context)
+
+    case match_typespec(output, result_type, context) do
+      {:ok, _, new_context} ->
+        {:ok, %Type.TypedFunction{inputs: resolved_inputs, output: result_type}, new_context}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def match_typespec(%Type.GenericProtocol{module: module, generic: generic}, type, context) do
+    name =
+      case type do
+        %Type.Atom{} ->
+          Atom
+
+        %Type.Number{kind: :integer} ->
+          Integer
+
+        %Type.Number{kind: :float} ->
+          Float
+
+        %Type.TypedTuple{} ->
+          Tuple
+
+        %Type.List{} ->
+          List
+
+        %Type.Map{} ->
+          Map
+      end
+
+    mod = Module.concat([module, name])
+
+    case eval_spec(mod, :ex_type_impl, [type]) do
+      {:ok, output} ->
+        # Helper.inspect {generic, output}
+        match_typespec(generic, output, context)
+    end
+  end
+
+  def match_typespec(%Type.List{type: left_type}, %Type.List{type: right_type}, context) do
+    case match_typespec(left_type, right_type, context) do
+      {:ok, result_type, context} ->
+        {:ok, %Type.List{type: result_type}, context}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def match_typespec(
+        %Type.Map{key: left_key_type, value: left_value_type},
+        %Type.Map{key: right_key_type, value: right_value_type},
+        context
+      ) do
+    match_typespec_list(
+      [left_key_type, left_value_type],
+      [right_key_type, right_value_type],
+      context,
+      fn [key, value] ->
+        %Type.Map{key: key, value: value}
+      end
+    )
+  end
+
+  def match_typespec(%Type.Union{types: union_types} = union, type, context) do
+    # match spec with each type of it
+    Enum.reduce_while(union_types, {:error, "not match with union"}, fn union_type, acc ->
+      case match_typespec(union_type, type, context) do
+        {:ok, _, _} ->
+          {:halt, {:ok, type, context}}
+
+        {:error, _} ->
+          {:cont, acc}
+      end
+    end)
+  end
+
+  def match_typespec(typespec, type, context) do
+    Helper.inspect({:error, {"not match_typespec", typespec, type, context}})
+  end
+
+  def match_typespec_list(left_types, right_types, context, wrap)
+      when length(left_types) == length(right_types) do
+    Enum.zip(left_types, right_types)
+    |> Enum.reduce_while({:ok, [], context}, fn {left_type, right_type},
+                                                {:ok, reversed_types, acc_context} ->
+      case match_typespec(left_type, right_type, acc_context) do
+        {:ok, result_type, acc_context} ->
+          {:cont, {:ok, [result_type | reversed_types], acc_context}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, reversed_types, context} ->
+        {:ok, wrap.(Enum.reverse(reversed_types)), context}
+
+      other ->
+        other
+    end
+  end
+
+  def match_typespec_list(_left_types, _right_types, _context, _) do
+    Helper.todo("length not match")
+  end
+
+  def resolve_typespec(%Type.SpecVariable{} = sv, map) do
+    Map.fetch!(map, sv)
+  end
+
+  def resolve_typespec(%Type.List{type: type}, map) do
+    %Type.List{type: resolve_typespec(type, map)}
+  end
+
+  def resolve_typespec(%Type.TypedTuple{types: types}, map) do
+    %Type.TypedTuple{types: Enum.map(types, &resolve_typespec(&1, map))}
+  end
+
+  def resolve_typespec(%Type.Union{types: types}, map) do
+    union_types(Enum.map(types, &resolve_typespec(&1, map)))
+  end
+
+  def resolve_typespec(%Type.Intersection{types: types}, map) do
+    intersect_types(Enum.map(types, &resolve_typespec(&1, map)))
+  end
+
+  def resolve_typespec(%Type.GenericProtocol{generic: generic} = t, map) do
+    %{t | generic: resolve_typespec(generic, map)}
+  end
+
+  # typed_function need it ?
+  def resolve_typespec(%Type.TypedFunction{inputs: inputs, output: output}, map) do
+    %Type.TypedFunction{
+      inputs: Enum.map(inputs, &resolve_typespec(&1, map)),
+      output: resolve_typespec(output, map)
+    }
+  end
+
+  # ... more ...
+
+  def resolve_typespec(type, _) do
+    type
   end
 end
