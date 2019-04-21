@@ -93,7 +93,7 @@ deftypespec Stream do
         ) :: T.p(Enumerable, y)
         when x: any(), y: any(), acc: any()
 
-  @spec unfold(acc, (acc -> {x, acc} | nil)) :: T.p(Enumerable, x) when x: any()
+  @spec unfold(acc, (acc -> {x, acc} | nil)) :: T.p(Enumerable, x) when x: any(), acc: any()
 
   @spec uniq(T.p(Enumerable, x)) :: T.p(Enumerable, x) when x: any()
 
