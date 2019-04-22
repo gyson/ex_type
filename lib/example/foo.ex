@@ -153,7 +153,6 @@ defmodule ExType.Example.Foo do
       hi: "yes",
       ok: 123
     }
-    |> T.inspect()
   end
 
   @spec none_example() :: none()

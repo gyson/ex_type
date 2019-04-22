@@ -185,8 +185,8 @@ defmodule ExType.Checker do
     eval(Module.get_attribute(module, attribute), context)
   end
 
-  # eralng module, e.g. :erlang.binary_to_term
-  def eval({{:., _, [module, name]}, _, args}, context)
+  # remote function call, e.g. :erlang.binary_to_term/1, Map.get/2
+  def eval({{:., _, [module, name]}, meta, args}, context)
       when is_atom(module) and is_atom(name) do
     args_types =
       Enum.map(args, fn arg ->
@@ -208,6 +208,21 @@ defmodule ExType.Checker do
             |> eval(context)
 
           true ->
+            location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
+
+            type_error =
+              quote do
+                unquote(module).unquote(name)(
+                  unquote_splicing(
+                    Enum.map(args_types, fn type ->
+                      Typespecable.to_quote(type)
+                    end)
+                  )
+                )
+              end
+              |> Macro.to_string()
+
+            IO.puts("#{Emoji.assert()}  Type Error `#{type_error}` at #{location}")
             {:error, error}
         end
     end
