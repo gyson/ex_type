@@ -17,12 +17,14 @@ defmodule ExType.CustomEnv do
 
       # Helper.inspect(%{defs: defs, defps: defps, specs: specs})
 
+      filter = ExType.Filter.get()
+
       # check each defs should have spec.
       defs
       # support "mix type" with filter
       |> Enum.filter(fn {{name, _, args}, _} ->
         module = ExType.Helper.get_module(env.module)
-        ExType.Filter.need_process?(module, name, length(args))
+        filter.({module, name, length(args)})
       end)
       # |> Helper.inspect
       |> Enum.map(fn {call, block} ->

@@ -5,19 +5,16 @@ defmodule ExType.Filter do
 
   use ExType.Helper
 
-  def register_filter(filter) do
-    :persistent_term.put(ExType.Filter, filter)
+  @table_name ExType.Filter.Table
+  @key_name ExType.Filter.Key
+
+  def register(filter) do
+    :ets.new(@table_name, [:named_table, :set])
+    :ets.insert_new(@table_name, {@key_name, filter})
   end
 
-  def need_process?(module, name, arity) do
-    filter =
-      try do
-        :persistent_term.get(ExType.Filter)
-      rescue
-        ArgumentError -> fn _ -> true end
-      end
-
-    filter.({module, name, arity})
+  def get() do
+    :ets.lookup_element(@table_name, @key_name, 2)
   end
 
   def parse(name) do
