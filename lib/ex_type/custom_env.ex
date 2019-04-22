@@ -22,7 +22,7 @@ defmodule ExType.CustomEnv do
       # support "mix type" with filter
       |> Enum.filter(fn {{name, _, args}, _} ->
         module = ExType.Helper.get_module(env.module)
-        ExType.Filter.need_process?(env.file, module, name, length(args))
+        ExType.Filter.need_process?(module, name, length(args))
       end)
       # |> Helper.inspect
       |> Enum.map(fn {call, block} ->

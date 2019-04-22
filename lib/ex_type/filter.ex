@@ -5,14 +5,14 @@ defmodule ExType.Filter do
 
   use ExType.Helper
 
-  def register_filter(file, filter) do
-    :persistent_term.put({ExType, file}, filter)
+  def register_filter(filter) do
+    :persistent_term.put(ExType.Filter, filter)
   end
 
-  def need_process?(file, module, name, arity) do
+  def need_process?(module, name, arity) do
     filter =
       try do
-        :persistent_term.get({ExType, file})
+        :persistent_term.get(ExType.Filter)
       rescue
         ArgumentError -> fn _ -> true end
       end

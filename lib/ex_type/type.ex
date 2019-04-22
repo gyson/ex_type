@@ -11,7 +11,6 @@ defmodule ExType.Type do
           | ExType.Type.Number.t()
           | ExType.Type.Atom.t()
           | ExType.Type.Reference.t()
-          | ExType.Type.Function.t()
           | ExType.Type.AnyFunction.t()
           | ExType.Type.RawFunction.t()
           | ExType.Type.TypedFunction.t()
@@ -58,7 +57,7 @@ defmodule ExType.Type do
   defmodule SpecVariable do
     @type t :: %__MODULE__{
             name: atom(),
-            type: Type.t(),
+            type: ExType.Type.t(),
             spec: {atom(), atom(), pos_integer()},
             id: integer()
           }

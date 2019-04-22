@@ -13,10 +13,10 @@ defmodule Mix.Tasks.Type do
   # `mix type Enum.map/2` for single function with specified arity
   def run([filter]) when is_binary(filter) do
     filter = ExType.Filter.parse(filter)
+    ExType.Filter.register_filter(filter)
 
     # could run in parallel
     for file <- get_files() do
-      ExType.Filter.register_filter(file, filter)
       ExType.check(file)
     end
   end
