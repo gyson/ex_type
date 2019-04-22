@@ -170,7 +170,7 @@ defmodule ExType.Checker do
           location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
           left_string = type_left |> ExType.Typespecable.to_quote() |> Macro.to_string()
           right_string = type_right |> ExType.Typespecable.to_quote() |> Macro.to_string()
-          IO.puts("#{Emoji.assert()}  T.assert #{left_string} != #{right_string} at #{location}")
+          IO.puts("#{Emoji.error()}  T.assert #{left_string} != #{right_string} at #{location}")
 
           Helper.eval_error(code, context)
         end
@@ -188,42 +188,51 @@ defmodule ExType.Checker do
   # remote function call, e.g. :erlang.binary_to_term/1, Map.get/2
   def eval({{:., _, [module, name]}, meta, args}, context)
       when is_atom(module) and is_atom(name) do
-    args_types =
-      Enum.map(args, fn arg ->
-        {:ok, arg_type, _} = eval(arg, context)
-        arg_type
-      end)
+    Enum.reduce_while(args, [], fn arg, acc ->
+      case eval(arg, context) do
+        {:ok, arg_type, _} ->
+          {:cont, acc ++ [arg_type]}
 
-    case Typespec.eval_spec(module, name, args_types) do
-      {:ok, output} ->
-        {:ok, output, context}
-
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
       {:error, error} ->
-        cond do
-          # handle exception without spec
-          name == :exception and length(args) == 1 and Helper.is_exception(module) ->
-            quote(do: %unquote(module){message: ""})
-            |> :elixir_expand.expand(__ENV__)
-            |> elem(0)
-            |> eval(context)
+        {:error, error}
 
-          true ->
-            location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
+      args_types ->
+        case Typespec.eval_spec(module, name, args_types) do
+          {:ok, output} ->
+            {:ok, output, context}
 
-            type_error =
-              quote do
-                unquote(module).unquote(name)(
-                  unquote_splicing(
-                    Enum.map(args_types, fn type ->
-                      Typespecable.to_quote(type)
-                    end)
-                  )
-                )
-              end
-              |> Macro.to_string()
+          {:error, error} ->
+            cond do
+              # handle exception without spec
+              name == :exception and length(args) == 1 and Helper.is_exception(module) ->
+                quote(do: %unquote(module){message: ""})
+                |> :elixir_expand.expand(__ENV__)
+                |> elem(0)
+                |> eval(context)
 
-            IO.puts("#{Emoji.assert()}  Type Error `#{type_error}` at #{location}")
-            {:error, error}
+              true ->
+                location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
+
+                type_error =
+                  quote do
+                    unquote(module).unquote(name)(
+                      unquote_splicing(
+                        Enum.map(args_types, fn type ->
+                          Typespecable.to_quote(type)
+                        end)
+                      )
+                    )
+                  end
+                  |> Macro.to_string()
+
+                IO.puts("#{Emoji.error()}  Type Error `#{type_error}` at #{location}")
+                {:error, error}
+            end
         end
     end
   end
