@@ -187,10 +187,32 @@ defmodule ExType.Typespec do
     end
   end
 
-  # TODO: T.&({any(), x}) => x
-  # TODO: T.&({any(), x, y}) => T.&({x, y})
-  def intersect_types(_types) do
-    Helper.todo()
+  def intersect_types(types) do
+    types
+    |> Enum.flat_map(fn
+      %Type.Intersection{types: inner_types} ->
+        inner_types
+
+      other ->
+        [other]
+    end)
+    |> Enum.uniq()
+    |> case do
+      [one] ->
+        one
+
+      multi ->
+        if Enum.member?(multi, %Type.None{}) do
+          %Type.None{}
+        else
+          %Type.Intersection{
+            types:
+              multi
+              |> Enum.reject(fn x -> x == %Type.Any{} end)
+              |> Enum.sort()
+          }
+        end
+    end
   end
 
   # basic types: https://hexdocs.pm/elixir/typespecs.html#basic-types
@@ -593,7 +615,7 @@ defmodule ExType.Typespec do
           |> Enum.flat_map(fn {inputs, output, _} ->
             case match_typespec_list(inputs, input_types, %{}, fn x -> x end) do
               {:ok, _, new_map} ->
-                [Typespec.resolve_typespec(output, new_map)]
+                [Typespecable.resolve_vars(output, new_map)]
 
               {:error, _} ->
                 []
@@ -651,7 +673,7 @@ defmodule ExType.Typespec do
       )
       when length(inputs) == length(args) do
     # need to resolve inputs ? then, make sure it's concrete type ?
-    resolved_inputs = Enum.map(inputs, &resolve_typespec(&1, context))
+    resolved_inputs = Enum.map(inputs, &Typespecable.resolve_vars(&1, context))
 
     new_fn_context =
       Enum.zip(args, resolved_inputs)
@@ -789,56 +811,5 @@ defmodule ExType.Typespec do
 
   def match_typespec_list(_left_types, _right_types, _context, _) do
     Helper.todo("length not match")
-  end
-
-  def resolve_typespec(%Type.SpecVariable{} = sv, map) do
-    case Map.fetch(map, sv) do
-      {:ok, type} ->
-        type
-
-      :error ->
-        sv.type
-    end
-  end
-
-  def resolve_typespec(%Type.List{type: type}, map) do
-    %Type.List{type: resolve_typespec(type, map)}
-  end
-
-  def resolve_typespec(%Type.TypedTuple{types: types}, map) do
-    %Type.TypedTuple{types: Enum.map(types, &resolve_typespec(&1, map))}
-  end
-
-  def resolve_typespec(%Type.Union{types: types}, map) do
-    union_types(Enum.map(types, &resolve_typespec(&1, map)))
-  end
-
-  def resolve_typespec(%Type.Intersection{types: types}, map) do
-    intersect_types(Enum.map(types, &resolve_typespec(&1, map)))
-  end
-
-  def resolve_typespec(%Type.GenericProtocol{generic: generic} = t, map) do
-    %{t | generic: resolve_typespec(generic, map)}
-  end
-
-  # typed_function need it ?
-  def resolve_typespec(%Type.TypedFunction{inputs: inputs, output: output}, map) do
-    %Type.TypedFunction{
-      inputs: Enum.map(inputs, &resolve_typespec(&1, map)),
-      output: resolve_typespec(output, map)
-    }
-  end
-
-  def resolve_typespec(%Type.Map{key: key, value: value}, map) do
-    %Type.Map{
-      key: resolve_typespec(key, map),
-      value: resolve_typespec(value, map)
-    }
-  end
-
-  # ... more ...
-
-  def resolve_typespec(type, _) do
-    type
   end
 end

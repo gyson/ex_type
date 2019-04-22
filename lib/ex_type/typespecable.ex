@@ -1,10 +1,13 @@
-# Protocol to convert ExType.Type to quoted typespec
+# Protocol for ExType.Type
 
 defprotocol ExType.Typespecable do
   def to_quote(x)
+
+  def resolve_vars(x, vars)
 end
 
 alias ExType.Type
+alias ExType.Typespec
 alias ExType.Typespecable
 
 defimpl Typespecable, for: Type.Any do
@@ -12,6 +15,22 @@ defimpl Typespecable, for: Type.Any do
     quote do
       any()
     end
+  end
+
+  def resolve_vars(type, _) do
+    type
+  end
+end
+
+defimpl Typespecable, for: Type.None do
+  def to_quote(_) do
+    quote do
+      none()
+    end
+  end
+
+  def resolve_vars(type, _) do
+    type
   end
 end
 
@@ -25,13 +44,21 @@ defimpl Typespecable, for: Type.Union do
       end
     end)
   end
+
+  def resolve_vars(%Type.Union{types: types}, vars) do
+    Typespec.union_types(Enum.map(types, &Typespecable.resolve_vars(&1, vars)))
+  end
 end
 
 defimpl Typespecable, for: Type.Intersection do
   def to_quote(%Type.Intersection{types: types}) do
     quote do
-      T.&({unquote_splicing(Enum.map(types, &ExType.Typespecable.to_quote/1))})
+      T.&({unquote_splicing(Enum.map(types, &Typespecable.to_quote/1))})
     end
+  end
+
+  def resolve_vars(%Type.Intersection{types: types}, vars) do
+    Typespec.intersect_types(Enum.map(types, &Typespecable.resolve_vars(&1, vars)))
   end
 end
 
@@ -39,6 +66,16 @@ defimpl Typespecable, for: Type.SpecVariable do
   def to_quote(%Type.SpecVariable{name: name, spec: {module, _, _}}) do
     quote do
       unquote(Macro.var(name, module))
+    end
+  end
+
+  def resolve_vars(%Type.SpecVariable{} = spec_var, vars) do
+    case Map.fetch(vars, spec_var) do
+      {:ok, type} ->
+        type
+
+      :error ->
+        spec_var.type
     end
   end
 end
@@ -49,6 +86,10 @@ defimpl Typespecable, for: Type.Protocol do
       unquote(module).t()
     end
   end
+
+  def resolve_vars(type, _) do
+    type
+  end
 end
 
 defimpl Typespecable, for: Type.GenericProtocol do
@@ -56,6 +97,10 @@ defimpl Typespecable, for: Type.GenericProtocol do
     quote do
       T.p(unquote(module), unquote(ExType.Typespecable.to_quote(generic)))
     end
+  end
+
+  def resolve_vars(%Type.GenericProtocol{generic: generic} = type, vars) do
+    %{type | generic: Typespecable.resolve_vars(generic, vars)}
   end
 end
 
@@ -65,6 +110,10 @@ defimpl Typespecable, for: Type.Float do
       float()
     end
   end
+
+  def resolve_vars(type, _) do
+    type
+  end
 end
 
 defimpl Typespecable, for: Type.Integer do
@@ -72,6 +121,10 @@ defimpl Typespecable, for: Type.Integer do
     quote do
       integer()
     end
+  end
+
+  def resolve_vars(type, _) do
+    type
   end
 end
 
@@ -85,6 +138,10 @@ defimpl Typespecable, for: Type.Atom do
       end
     end
   end
+
+  def resolve_vars(type, _) do
+    type
+  end
 end
 
 defimpl Typespecable, for: Type.AnyFunction do
@@ -92,6 +149,10 @@ defimpl Typespecable, for: Type.AnyFunction do
     quote do
       ... -> any()
     end
+  end
+
+  def resolve_vars(type, _) do
+    type
   end
 end
 
@@ -102,6 +163,10 @@ defimpl Typespecable, for: Type.RawFunction do
     quote do
       unquote_splicing(quoted_anys) -> any()
     end
+  end
+
+  def resolve_vars(type, _) do
+    type
   end
 end
 
@@ -114,6 +179,13 @@ defimpl Typespecable, for: Type.TypedFunction do
       unquote_splicing(quoted_inputs) -> unquote(quoted_output)
     end
   end
+
+  def resolve_vars(%Type.TypedFunction{inputs: inputs, output: output}, vars) do
+    %Type.TypedFunction{
+      inputs: Enum.map(inputs, &Typespecable.resolve_vars(&1, vars)),
+      output: Typespecable.resolve_vars(output, vars)
+    }
+  end
 end
 
 defimpl Typespecable, for: Type.List do
@@ -121,6 +193,10 @@ defimpl Typespecable, for: Type.List do
     quote do
       [unquote(Typespecable.to_quote(type))]
     end
+  end
+
+  def resolve_vars(%Type.List{type: type}, vars) do
+    %Type.List{type: Typespecable.resolve_vars(type, vars)}
   end
 end
 
@@ -133,6 +209,13 @@ defimpl Typespecable, for: Type.Map do
       %{required(unquote(quoted_key)) => unquote(quoted_value)}
     end
   end
+
+  def resolve_vars(%Type.Map{key: key, value: value}, vars) do
+    %Type.Map{
+      key: Typespecable.resolve_vars(key, vars),
+      value: Typespecable.resolve_vars(value, vars)
+    }
+  end
 end
 
 defimpl Typespecable, for: Type.TypedTuple do
@@ -143,6 +226,10 @@ defimpl Typespecable, for: Type.TypedTuple do
       {unquote_splicing(quoted_types)}
     end
   end
+
+  def resolve_vars(%Type.TypedTuple{types: types}, vars) do
+    %Type.TypedTuple{types: Enum.map(types, &Typespecable.resolve_vars(&1, vars))}
+  end
 end
 
 defimpl Typespecable, for: Type.BitString do
@@ -150,6 +237,10 @@ defimpl Typespecable, for: Type.BitString do
     quote do
       unquote(kind)()
     end
+  end
+
+  def resolve_vars(type, _) do
+    type
   end
 end
 
@@ -164,5 +255,10 @@ defimpl Typespecable, for: Type.Struct do
         )
       }
     end
+  end
+
+  def resolve_vars(type, _) do
+    # TODO: fix this
+    type
   end
 end

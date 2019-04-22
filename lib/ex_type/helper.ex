@@ -9,6 +9,7 @@ defmodule ExType.Helper do
       alias ExType.Type
       alias ExType.Helper
       alias ExType.Typespec
+      alias ExType.Typespecable
       alias ExType.Unification
 
       require ExType.Helper
