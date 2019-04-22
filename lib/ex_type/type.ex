@@ -3,6 +3,7 @@ defmodule ExType.Type do
 
   @type t ::
           ExType.Type.Any.t()
+          | ExType.Type.None.t()
           | ExType.Type.Union.t()
           | ExType.Type.Intersection.t()
           | ExType.Type.Protocol.t()
@@ -27,6 +28,12 @@ defmodule ExType.Type do
           | ExType.Type.BitString.t()
 
   defmodule Any do
+    @type t :: %__MODULE__{}
+
+    defstruct []
+  end
+
+  defmodule None do
     @type t :: %__MODULE__{}
 
     defstruct []

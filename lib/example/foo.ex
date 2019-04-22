@@ -155,4 +155,10 @@ defmodule ExType.Example.Foo do
     }
     |> T.inspect()
   end
+
+  @spec none_example() :: none()
+
+  def none_example() do
+    raise ArgumentError, "test"
+  end
 end

@@ -158,7 +158,7 @@ defmodule ExType.Checker do
     {right_spec, []} = Code.eval_quoted(escaped_right)
 
     # TODO: maybe use map from the context ?
-    type_right = Typespec.eval_type(right_spec, %{})
+    type_right = Typespec.eval_type(right_spec, {Helper.get_module(context.env.module), %{}})
 
     case operator do
       :== ->
@@ -193,6 +193,19 @@ defmodule ExType.Checker do
     case Typespec.eval_spec(module, name, args_types) do
       {:ok, output} ->
         {:ok, output, context}
+
+      {:error, error} ->
+        cond do
+          # handle exception without spec
+          name == :exception and length(args) == 1 and Helper.is_exception(module) ->
+            quote(do: %unquote(module){message: ""})
+            |> :elixir_expand.expand(__ENV__)
+            |> elem(0)
+            |> eval(context)
+
+          true ->
+            {:error, error}
+        end
     end
   end
 

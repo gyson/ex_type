@@ -29,4 +29,8 @@ deftypespec :erlang do
   @spec unquote(:==)(any(), any()) :: boolean()
 
   @spec binary_to_term(binary()) :: any()
+
+  @spec error(any()) :: no_return()
+
+  @spec error(any(), [any()]) :: no_return()
 end

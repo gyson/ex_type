@@ -72,7 +72,7 @@ defmodule ExType.Typespec do
       {:ok, ts} ->
         result =
           ts
-          |> Enum.map(fn {kind, type} when kind in [:type, :typep] ->
+          |> Enum.map(fn {kind, type} when kind in [:type, :typep, :opaque] ->
             Code.Typespec.type_to_quoted(type)
           end)
           |> Enum.find(fn
@@ -177,7 +177,12 @@ defmodule ExType.Typespec do
         if Enum.member?(multi, %Type.Any{}) do
           %Type.Any{}
         else
-          %Type.Union{types: Enum.sort(multi)}
+          %Type.Union{
+            types:
+              multi
+              |> Enum.reject(fn x -> x == %Type.None{} end)
+              |> Enum.sort()
+          }
         end
     end
   end
@@ -197,7 +202,7 @@ defmodule ExType.Typespec do
   end
 
   def eval_type({:none, _, []}, _) do
-    Helper.todo()
+    %Type.None{}
   end
 
   def eval_type({:atom, _, []}, _) do
@@ -430,7 +435,9 @@ defmodule ExType.Typespec do
     eval_type({:atom, meta, []}, context)
   end
 
-  # TODO: no_return
+  def eval_type({:no_return, meta, []}, context) do
+    eval_type({:none, meta, []}, context)
+  end
 
   def eval_type({:node, meta, []}, context) do
     eval_type({:atom, meta, []}, context)

@@ -85,6 +85,15 @@ defmodule ExType.Helper do
     end
   end
 
+  def is_exception(module) do
+    try do
+      Keyword.get(module.__info__(:attributes), :behaviour) == [Exception]
+    rescue
+      UndefinedFunctionError ->
+        false
+    end
+  end
+
   def get_module(module) do
     ["ExType", "Module" | rest] = Module.split(module)
     Module.concat(rest)
