@@ -15,14 +15,14 @@ defmodule ExType.Unification do
 
   def unify_pattern(integer, type, context) when is_integer(integer) do
     case type do
-      %Type.Number{kind: :integer} ->
+      %Type.Integer{} ->
         {:ok, type, context}
     end
   end
 
   def unify_pattern(float, type, context) when is_float(float) do
     case type do
-      %Type.Number{kind: :float} ->
+      %Type.Float{} ->
         {:ok, type, context}
     end
   end
@@ -138,12 +138,12 @@ defmodule ExType.Unification do
 
   def unify_guard({{:., _, [:erlang, :is_integer]}, _, [{var, _, ctx}]}, context)
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.Number{kind: :integer})}
+    {:ok, Context.update_scope(context, var, %Type.Integer{})}
   end
 
   def unify_guard({{:., _, [:erlang, :is_float]}, _, [{var, _, ctx}]}, context)
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.Number{kind: :float})}
+    {:ok, Context.update_scope(context, var, %Type.Float{})}
   end
 
   # TODO: add more type check

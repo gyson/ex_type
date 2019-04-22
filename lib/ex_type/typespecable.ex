@@ -59,10 +59,18 @@ defimpl Typespecable, for: Type.GenericProtocol do
   end
 end
 
-defimpl Typespecable, for: Type.Number do
-  def to_quote(%Type.Number{kind: kind}) do
+defimpl Typespecable, for: Type.Float do
+  def to_quote(%Type.Float{}) do
     quote do
-      unquote(kind)()
+      float()
+    end
+  end
+end
+
+defimpl Typespecable, for: Type.Integer do
+  def to_quote(%Type.Integer{}) do
+    quote do
+      integer()
     end
   end
 end

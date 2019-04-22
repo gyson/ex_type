@@ -9,8 +9,8 @@ defmodule ExType.TypespecableTest do
   end
 
   test "number" do
-    assert Typespecable.to_quote(%Type.Number{kind: :integer}) == quote(do: integer())
-    assert Typespecable.to_quote(%Type.Number{kind: :float}) == quote(do: float())
+    assert Typespecable.to_quote(%Type.Integer{}) == quote(do: integer())
+    assert Typespecable.to_quote(%Type.Float{}) == quote(do: float())
   end
 
   test "atom" do
@@ -32,7 +32,7 @@ defmodule ExType.TypespecableTest do
            }) ==
              quote(do: (any(), any() -> any()))
 
-    integer = %Type.Number{kind: :integer}
+    integer = %Type.Integer{}
 
     typed_fn = %Type.TypedFunction{
       inputs: [integer, integer],

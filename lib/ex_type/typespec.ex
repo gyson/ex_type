@@ -237,11 +237,11 @@ defmodule ExType.Typespec do
   end
 
   def eval_type({:float, _, []}, _) do
-    %Type.Number{kind: :float}
+    %Type.Float{}
   end
 
   def eval_type({:integer, _, []}, _) do
-    %Type.Number{kind: :integer}
+    %Type.Integer{}
   end
 
   def eval_type({:neg_integer, meta, []}, context) do
@@ -695,10 +695,10 @@ defmodule ExType.Typespec do
         %Type.Atom{} ->
           Atom
 
-        %Type.Number{kind: :integer} ->
+        %Type.Integer{} ->
           Integer
 
-        %Type.Number{kind: :float} ->
+        %Type.Float{} ->
           Float
 
         %Type.TypedTuple{} ->

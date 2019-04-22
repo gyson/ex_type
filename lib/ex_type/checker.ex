@@ -78,11 +78,11 @@ defmodule ExType.Checker do
   end
 
   def eval(block, context) when is_integer(block) do
-    {:ok, %Type.Number{kind: :integer}, context}
+    {:ok, %Type.Integer{}, context}
   end
 
   def eval(block, context) when is_float(block) do
-    {:ok, %Type.Number{kind: :float}, context}
+    {:ok, %Type.Float{}, context}
   end
 
   def eval([], context) do

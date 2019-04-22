@@ -8,7 +8,8 @@ defmodule ExType.Type do
           | ExType.Type.Intersection.t()
           | ExType.Type.Protocol.t()
           | ExType.Type.GenericProtocol.t()
-          | ExType.Type.Number.t()
+          | ExType.Type.Float.t()
+          | ExType.Type.Integer.t()
           | ExType.Type.Atom.t()
           | ExType.Type.Reference.t()
           | ExType.Type.AnyFunction.t()
@@ -79,19 +80,16 @@ defmodule ExType.Type do
     defstruct [:module, :generic]
   end
 
-  defmodule Number do
-    @type t :: %__MODULE__{
-            kind:
-              :integer
-              | :float
-              | :number
-              | :pos_integer
-              | :neg_integer
-              | :non_pos_integer
-              | :non_neg_integer
-          }
+  defmodule Float do
+    @type t :: %__MODULE__{}
 
-    defstruct [:kind]
+    defstruct []
+  end
+
+  defmodule Integer do
+    @type t :: %__MODULE__{}
+
+    defstruct []
   end
 
   defmodule Atom do
