@@ -1,4 +1,5 @@
 %{
   "dialyxir": {:git, "https://github.com/jeremyjh/dialyxir.git", "625c26ec60b3cd68a3c694212ff65306c3bbe62f", []},
   "erlex": {:hex, :erlex, "0.2.1", "cee02918660807cbba9a7229cae9b42d1c6143b768c781fa6cee1eaf03ad860b", [:mix], [], "hexpm"},
+  "ex_type_runtime": {:hex, :ex_type_runtime, "0.1.0", "c7557490c969aacaaada89b30213d3572b615b5ef29c6617f1b588b1213a5127", [:mix], [], "hexpm"},
 }

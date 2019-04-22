@@ -18,6 +18,14 @@ defmodule ExType.Example.Foo do
     unquote(hi) + x
   end
 
+  @okk 333
+
+  @spec attribute_example() :: integer()
+
+  def attribute_example() do
+    @okk + 33
+  end
+
   @spec inspect() :: any()
 
   def inspect() do

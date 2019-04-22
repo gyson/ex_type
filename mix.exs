@@ -23,7 +23,7 @@ defmodule ExType.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dialyxir, "~> 1.0.0-rc.6", only: :dev, runtime: false}
+      {:ex_type_runtime, "~> 0.1.0"},
       {:dialyxir, github: "jeremyjh/dialyxir", only: :dev, runtime: false}
     ]
   end
