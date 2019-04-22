@@ -158,14 +158,14 @@ defmodule ExType.CustomEnv do
       output: output
     }
 
-    path_name = "#{module}.#{name}/#{length(args)}"
+    path_name = "#{Macro.to_string(module)}.#{name}/#{length(args)}"
 
     case Typespec.match_typespec(fn_typespec, raw_fn, map) do
-      {:ok, type, _} ->
-        Helper.inspect({:match, path_name, type})
+      {:ok, _type, _} ->
+        IO.puts("✅  #{path_name}")
 
-      {:error, error} ->
-        Helper.inspect({:not_match, path_name, error})
+      {:error, _error} ->
+        IO.puts("❌  #{path_name}")
     end
   end
 end

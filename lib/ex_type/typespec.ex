@@ -684,11 +684,15 @@ defmodule ExType.Typespec do
 
     # TODO: type guards
 
-    {:ok, result_type, _} = ExType.Checker.eval(body, new_fn_context)
+    case ExType.Checker.eval(body, new_fn_context) do
+      {:ok, result_type, _} ->
+        case match_typespec(output, result_type, context) do
+          {:ok, _, new_context} ->
+            {:ok, %Type.TypedFunction{inputs: resolved_inputs, output: result_type}, new_context}
 
-    case match_typespec(output, result_type, context) do
-      {:ok, _, new_context} ->
-        {:ok, %Type.TypedFunction{inputs: resolved_inputs, output: result_type}, new_context}
+          {:error, error} ->
+            {:error, error}
+        end
 
       {:error, error} ->
         {:error, error}
@@ -760,7 +764,7 @@ defmodule ExType.Typespec do
   end
 
   def match_typespec(typespec, type, context) do
-    Helper.inspect({:error, {"not match_typespec", typespec, type, context}})
+    {:error, {"not match_typespec", typespec, type, context}}
   end
 
   def match_typespec_list(left_types, right_types, context, wrap)
