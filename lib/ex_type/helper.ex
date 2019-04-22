@@ -7,6 +7,7 @@ defmodule ExType.Helper do
       alias ExType.Context
       alias ExType.CustomEnv
       alias ExType.Type
+      alias ExType.Emoji
       alias ExType.Helper
       alias ExType.Typespec
       alias ExType.Typespecable

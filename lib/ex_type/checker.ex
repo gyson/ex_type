@@ -145,7 +145,7 @@ defmodule ExType.Checker do
       [item] ->
         {:ok, type, _} = result = eval(item, context)
         type_string = type |> ExType.Typespecable.to_quote() |> Macro.to_string()
-        IO.puts("❓  T.inspect #{type_string} at #{location}")
+        IO.puts("#{Emoji.inspect()}  T.inspect #{type_string} at #{location}")
         result
 
       _ ->
@@ -170,7 +170,7 @@ defmodule ExType.Checker do
           location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
           left_string = type_left |> ExType.Typespecable.to_quote() |> Macro.to_string()
           right_string = type_right |> ExType.Typespecable.to_quote() |> Macro.to_string()
-          IO.puts("❗  T.assert #{left_string} != #{right_string} at #{location}")
+          IO.puts("#{Emoji.assert()}  T.assert #{left_string} != #{right_string} at #{location}")
 
           Helper.eval_error(code, context)
         end

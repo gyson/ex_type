@@ -162,10 +162,10 @@ defmodule ExType.CustomEnv do
 
     case Typespec.match_typespec(fn_typespec, raw_fn, map) do
       {:ok, _type, _} ->
-        IO.puts("✅  #{path_name}")
+        IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
 
       {:error, _error} ->
-        IO.puts("❌  #{path_name}")
+        IO.puts("#{Emoji.one_test_fail()}  #{path_name}")
     end
   end
 end
