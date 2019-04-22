@@ -14,7 +14,13 @@ defmodule ExType.Filter do
   end
 
   def get() do
-    :ets.lookup_element(@table_name, @key_name, 2)
+    case :ets.info(@table_name) do
+      :undefined ->
+        fn _ -> true end
+
+      _ ->
+        :ets.lookup_element(@table_name, @key_name, 2)
+    end
   end
 
   def parse(name) do
