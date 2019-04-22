@@ -5,13 +5,15 @@ defmodule ExType.Context do
           env: any(),
           scope: any(),
           type_variables: any(),
-          functions: map()
+          functions: map(),
+          stacks: [any()]
         }
 
   defstruct env: nil,
             scope: %{},
             type_variables: %{},
-            functions: %{}
+            functions: %{},
+            stacks: []
 
   def update_scope(%__MODULE__{scope: scope} = context, name, type) do
     %{context | scope: Map.put(scope, name, type)}

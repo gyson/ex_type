@@ -101,11 +101,3 @@ defmodule ExType.Helper do
     Module.concat(rest)
   end
 end
-
-defimpl Inspect, for: Macro.Env do
-  @moduledoc false
-
-  def inspect(_env, _opts) do
-    "%Macro.Env{}"
-  end
-end
