@@ -19,7 +19,7 @@ defmodule ExType.Type do
           | ExType.Type.PID.t()
           | ExType.Type.AnyTuple.t()
           | ExType.Type.TypedTuple.t()
-
+          | ExType.Type.SpecVariable.t()
           # Map.Empty
           | ExType.Type.Map.t()
           | ExType.Type.Struct.t()

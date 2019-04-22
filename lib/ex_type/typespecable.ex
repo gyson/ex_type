@@ -1,14 +1,22 @@
 # Protocol for ExType.Type
 
-defprotocol ExType.Typespecable do
-  def to_quote(x)
-
-  def resolve_vars(x, vars)
-end
-
 alias ExType.Type
 alias ExType.Typespec
 alias ExType.Typespecable
+
+defprotocol ExType.Typespecable do
+  @spec to_quote(Type.t()) :: any()
+
+  def to_quote(x)
+
+  @spec resolve_vars(Type.t(), %{optional(Type.SpecVariable.t()) => Type.t()}) :: Type.t()
+
+  def resolve_vars(x, vars)
+
+  @spec get_protocol_path(Type.t()) :: {:ok, atom()} | :error
+
+  def get_protocol_path(x)
+end
 
 defimpl Typespecable, for: Type.Any do
   def to_quote(_) do
@@ -20,6 +28,8 @@ defimpl Typespecable, for: Type.Any do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: :error
 end
 
 defimpl Typespecable, for: Type.None do
@@ -32,6 +42,8 @@ defimpl Typespecable, for: Type.None do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: :error
 end
 
 defimpl Typespecable, for: Type.Union do
@@ -48,6 +60,8 @@ defimpl Typespecable, for: Type.Union do
   def resolve_vars(%Type.Union{types: types}, vars) do
     Typespec.union_types(Enum.map(types, &Typespecable.resolve_vars(&1, vars)))
   end
+
+  def get_protocol_path(_), do: :error
 end
 
 defimpl Typespecable, for: Type.Intersection do
@@ -60,6 +74,8 @@ defimpl Typespecable, for: Type.Intersection do
   def resolve_vars(%Type.Intersection{types: types}, vars) do
     Typespec.intersect_types(Enum.map(types, &Typespecable.resolve_vars(&1, vars)))
   end
+
+  def get_protocol_path(_), do: :error
 end
 
 defimpl Typespecable, for: Type.SpecVariable do
@@ -78,6 +94,8 @@ defimpl Typespecable, for: Type.SpecVariable do
         spec_var.type
     end
   end
+
+  def get_protocol_path(_), do: :error
 end
 
 defimpl Typespecable, for: Type.Protocol do
@@ -90,6 +108,8 @@ defimpl Typespecable, for: Type.Protocol do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: :error
 end
 
 defimpl Typespecable, for: Type.GenericProtocol do
@@ -102,6 +122,8 @@ defimpl Typespecable, for: Type.GenericProtocol do
   def resolve_vars(%Type.GenericProtocol{generic: generic} = type, vars) do
     %{type | generic: Typespecable.resolve_vars(generic, vars)}
   end
+
+  def get_protocol_path(_), do: :error
 end
 
 defimpl Typespecable, for: Type.Float do
@@ -114,6 +136,8 @@ defimpl Typespecable, for: Type.Float do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: {:ok, Float}
 end
 
 defimpl Typespecable, for: Type.Integer do
@@ -126,6 +150,8 @@ defimpl Typespecable, for: Type.Integer do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: {:ok, Integer}
 end
 
 defimpl Typespecable, for: Type.Atom do
@@ -142,6 +168,8 @@ defimpl Typespecable, for: Type.Atom do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: {:ok, Atom}
 end
 
 defimpl Typespecable, for: Type.AnyFunction do
@@ -154,6 +182,8 @@ defimpl Typespecable, for: Type.AnyFunction do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: {:ok, Function}
 end
 
 defimpl Typespecable, for: Type.RawFunction do
@@ -168,6 +198,8 @@ defimpl Typespecable, for: Type.RawFunction do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: {:ok, Function}
 end
 
 defimpl Typespecable, for: Type.TypedFunction do
@@ -186,6 +218,8 @@ defimpl Typespecable, for: Type.TypedFunction do
       output: Typespecable.resolve_vars(output, vars)
     }
   end
+
+  def get_protocol_path(_), do: {:ok, Function}
 end
 
 defimpl Typespecable, for: Type.List do
@@ -198,6 +232,8 @@ defimpl Typespecable, for: Type.List do
   def resolve_vars(%Type.List{type: type}, vars) do
     %Type.List{type: Typespecable.resolve_vars(type, vars)}
   end
+
+  def get_protocol_path(_), do: {:ok, List}
 end
 
 defimpl Typespecable, for: Type.Map do
@@ -216,6 +252,8 @@ defimpl Typespecable, for: Type.Map do
       value: Typespecable.resolve_vars(value, vars)
     }
   end
+
+  def get_protocol_path(_), do: {:ok, Map}
 end
 
 defimpl Typespecable, for: Type.TypedTuple do
@@ -230,6 +268,8 @@ defimpl Typespecable, for: Type.TypedTuple do
   def resolve_vars(%Type.TypedTuple{types: types}, vars) do
     %Type.TypedTuple{types: Enum.map(types, &Typespecable.resolve_vars(&1, vars))}
   end
+
+  def get_protocol_path(_), do: {:ok, Tuple}
 end
 
 defimpl Typespecable, for: Type.BitString do
@@ -242,6 +282,8 @@ defimpl Typespecable, for: Type.BitString do
   def resolve_vars(type, _) do
     type
   end
+
+  def get_protocol_path(_), do: {:ok, BitString}
 end
 
 defimpl Typespecable, for: Type.Struct do
@@ -261,4 +303,7 @@ defimpl Typespecable, for: Type.Struct do
     # TODO: fix this
     type
   end
+
+  # TODO: fix this
+  def get_protocol_path(_), do: :error
 end

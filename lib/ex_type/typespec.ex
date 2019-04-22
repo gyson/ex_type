@@ -696,12 +696,7 @@ defmodule ExType.Typespec do
   end
 
   def match_typespec(%Type.Protocol{module: module}, type, context) do
-    # TODO: more cases...
-    name =
-      case type do
-        %Type.BitString{} ->
-          BitString
-      end
+    {:ok, name} = Typespecable.get_protocol_path(type)
 
     mod = Module.concat([module, name])
 
@@ -712,26 +707,7 @@ defmodule ExType.Typespec do
   end
 
   def match_typespec(%Type.GenericProtocol{module: module, generic: generic}, type, context) do
-    name =
-      case type do
-        %Type.Atom{} ->
-          Atom
-
-        %Type.Integer{} ->
-          Integer
-
-        %Type.Float{} ->
-          Float
-
-        %Type.TypedTuple{} ->
-          Tuple
-
-        %Type.List{} ->
-          List
-
-        %Type.Map{} ->
-          Map
-      end
+    {:ok, name} = Typespecable.get_protocol_path(type)
 
     mod = Module.concat([module, name])
 
