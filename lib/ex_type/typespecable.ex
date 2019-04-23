@@ -320,6 +320,7 @@ defimpl Typespecable, for: Type.Struct do
     type
   end
 
-  # TODO: fix this
-  def get_protocol_path(_), do: :error
+  def get_protocol_path(%Type.Struct{struct: struct}) do
+    {:ok, struct}
+  end
 end

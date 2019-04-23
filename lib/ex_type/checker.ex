@@ -71,9 +71,19 @@ defmodule ExType.Checker do
   def eval(list, context) when is_list(list) do
     type =
       list
-      |> Enum.map(fn x ->
-        {:ok, val, _} = eval(x, context)
-        val
+      |> Enum.flat_map(fn
+        # handle [1, 2, 3 | [4]]
+        {:|, _, [left, right]} ->
+          {:ok, left_val, _} = eval(left, context)
+
+          case eval(right, context) do
+            {:ok, %Type.List{type: right_val}, _} ->
+              [left_val, right_val]
+          end
+
+        x ->
+          {:ok, val, _} = eval(x, context)
+          [val]
       end)
       |> Typespec.union_types()
 
@@ -235,21 +245,27 @@ defmodule ExType.Checker do
   def eval({:__block__, _, exprs}, context) do
     default_nil = %Type.Atom{literal: true, value: nil}
 
-    {:ok, value, _} =
-      Enum.reduce(exprs, {:ok, default_nil, context}, fn expr, {:ok, _, acc_context} ->
-        eval(expr, acc_context)
-      end)
+    exprs
+    |> Enum.reduce_while({:ok, default_nil, context}, fn
+      expr, {:ok, _, acc_context} ->
+        {:cont, eval(expr, acc_context)}
 
-    # block has its own scope
-    {:ok, value, context}
+      _, {:error, error} ->
+        {:halt, {:error, error}}
+    end)
+    |> case do
+      {:ok, value, _} ->
+        # block has its own scope
+        {:ok, value, context}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def eval({:=, _, [left, right]}, context) do
-    {:ok, type, _} = eval(right, context)
-
-    {:ok, result, new_context} = Unification.unify_pattern(left, type, context)
-
-    {:ok, result, new_context}
+    {:ok, type, context} = eval(right, context)
+    Unification.unify_pattern(left, type, context)
   end
 
   # unify pattern and spec
@@ -413,6 +429,19 @@ defmodule ExType.Checker do
               nil ->
                 Helper.eval_error(code, context)
             end
+        end
+    end
+  end
+
+  def eval({{:., _, [left, right]}, _, []}, context) when is_atom(right) do
+    case eval(left, context) do
+      {:ok, %Type.StructLikeMap{types: types}, context} ->
+        case Map.fetch(types, right) do
+          {:ok, type} ->
+            {:ok, type, context}
+
+          :error ->
+            {:error, "invalid field #{right}"}
         end
     end
   end

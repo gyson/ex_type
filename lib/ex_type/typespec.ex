@@ -319,13 +319,28 @@ defmodule ExType.Typespec do
   def eval_type({:%{}, _, args}, context) do
     case args do
       [] ->
-        Helper.todo()
+        %Type.Map{
+          key: %Type.Any{},
+          value: %Type.Any{}
+        }
 
       [{{header, _, [key_type]}, value_type}] when header in [:required, :optional] ->
         %Type.Map{
           key: eval_type(key_type, context),
           value: eval_type(value_type, context)
         }
+
+      _ ->
+        if Enum.all?(args, fn {key, _} -> is_atom(key) end) do
+          types =
+            args
+            |> Enum.map(fn {key, value} -> {key, eval_type(value, context)} end)
+            |> Enum.into(%{})
+
+          %Type.StructLikeMap{types: types}
+        else
+          {:error, "unsupported map type"}
+        end
     end
   end
 
@@ -538,8 +553,11 @@ defmodule ExType.Typespec do
   # type variable
   def eval_type({name, meta, atom}, {_, vars} = context) when is_atom(name) and is_atom(atom) do
     case vars do
-      %{^name => type} ->
+      %{^name => %Type.SpecVariable{} = type} ->
         type
+
+      %{^name => raw} ->
+        eval_type(raw, context)
 
       _ ->
         eval_type({name, meta, []}, context)
@@ -579,7 +597,7 @@ defmodule ExType.Typespec do
       {:ok, specs} ->
         result =
           Enum.map(specs, fn {inputs, output, raw_vars} ->
-            empty_context = {module, %{}}
+            init_context = {module, Enum.into(raw_vars, %{})}
 
             spec_vars =
               raw_vars
@@ -587,7 +605,7 @@ defmodule ExType.Typespec do
                 {var,
                  %Type.SpecVariable{
                    name: var,
-                   type: eval_type(expr, empty_context),
+                   type: eval_type(expr, init_context),
                    spec: {module, name, arity},
                    id: :erlang.unique_integer()
                  }}
@@ -768,6 +786,24 @@ defmodule ExType.Typespec do
     end)
   end
 
+  # when right type is union, we need to make sure all types matches
+  def match_typespec(typespec, %Type.Union{types: union_types}, context) do
+    # match spec with each type of it
+    Enum.reduce_while(union_types, {:ok, typespec, context}, fn union_type, acc ->
+      case match_typespec(typespec, union_type, context) do
+        {:ok, _, _} ->
+          {:cont, acc}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  def match_typespec(%Type.AnyTuple{} = typespec, %Type.TypedTuple{}, context) do
+    {:ok, typespec, context}
+  end
+
   def match_typespec(typespec, type, context) do
     {:error, {"not match_typespec", typespec, type, context}}
   end
@@ -795,6 +831,6 @@ defmodule ExType.Typespec do
   end
 
   def match_typespec_list(_left_types, _right_types, _context, _) do
-    Helper.todo("length not match")
+    {:error, "length not match"}
   end
 end

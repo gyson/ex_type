@@ -17,6 +17,24 @@ defmodule ExType.Unification do
 
   @spec unify_pattern(any(), Type.t(), Context.t()) :: {:ok, any(), Context.t()} | {:error, any()}
 
+  def unify_pattern(pattern, %Type.Union{types: types}, context) do
+    # TODO: fix this. this is not best / correct behaviour
+    Enum.reduce_while(types, {:error, "not match union"}, fn type, acc ->
+      case unify_pattern(pattern, type, context) do
+        {:ok, _, _} = result ->
+          {:halt, result}
+
+        {:error, _} ->
+          {:cont, acc}
+      end
+    end)
+  end
+
+  def unify_pattern({:\\, _, [left, _right]}, type, context) do
+    # TODO: need to handle right ?
+    unify_pattern(left, type, context)
+  end
+
   def unify_pattern(integer, type, context) when is_integer(integer) do
     case type do
       %Type.Integer{} ->
@@ -42,6 +60,9 @@ defmodule ExType.Unification do
     case type do
       %Type.Atom{literal: true, value: ^atom} ->
         {:ok, type, context}
+
+      %Type.Any{} ->
+        {:ok, type, context}
     end
   end
 
@@ -57,7 +78,7 @@ defmodule ExType.Unification do
 
   def unify_pattern({:{}, _, args} = pattern, type, context) do
     case type do
-      %Type.TypedTuple{types: types} ->
+      %Type.TypedTuple{types: types} when length(args) == length(types) ->
         {unified_types, context} =
           Enum.zip(args, types)
           |> Enum.reduce({[], context}, fn {arg, t}, {acc, context} ->
@@ -66,6 +87,9 @@ defmodule ExType.Unification do
           end)
 
         {:ok, %Type.TypedTuple{types: unified_types}, context}
+
+      %Type.AnyTuple{} ->
+        unify_pattern(pattern, %Type.Any{}, context)
 
       %Type.Any{} ->
         new_context =
@@ -123,6 +147,31 @@ defmodule ExType.Unification do
     {:ok, type, context}
   end
 
+  def unify_pattern({:=, _, [left, right]}, type, context) do
+    case unify_pattern(right, type, context) do
+      {:ok, type, context} ->
+        unify_pattern(left, type, context)
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def unify_pattern({:^, _, [_]}, type, context) do
+    # TODO: fix this
+    {:ok, type, context}
+  end
+
+  def unify_pattern({:%{}, _, [{left, right}]}, %Type.Map{key: key, value: value}, context) do
+    case unify_pattern(left, key, context) do
+      {:ok, _, context} ->
+        unify_pattern(right, value, context)
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   def unify_pattern(pattern, type, context) do
     Helper.pattern_error(pattern, type, context)
   end
@@ -152,6 +201,10 @@ defmodule ExType.Unification do
   def unify_guard({{:., _, [:erlang, :is_float]}, _, [{var, _, ctx}]}, context)
       when is_atom(var) and is_atom(ctx) do
     {:ok, Context.update_scope(context, var, %Type.Float{})}
+  end
+
+  def unify_guard({{:., _, [:erlang, op]}, _, [_, _]}, context) when op in [:>, :<, :>=, :<=] do
+    {:ok, context}
   end
 
   # TODO: add more type check

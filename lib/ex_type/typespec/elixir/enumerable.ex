@@ -32,7 +32,7 @@ deftypespec Enumerable.MapSet do
 end
 
 deftypespec Enumerable.Range do
-  # TODO
+  @spec ex_type_impl(any()) :: integer()
 end
 
 deftypespec Enumerable.Stream do

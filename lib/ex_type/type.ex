@@ -23,6 +23,7 @@ defmodule ExType.Type do
           # Map.Empty
           | ExType.Type.Map.t()
           | ExType.Type.Struct.t()
+          | ExType.Type.StructLikeMap.t()
           # List.Empty
           | ExType.Type.List.t()
           | ExType.Type.BitString.t()
@@ -194,6 +195,16 @@ defmodule ExType.Type do
           }
 
     defstruct [:struct, :types]
+  end
+
+  defmodule StructLikeMap do
+    @moduledoc false
+
+    @type t :: %__MODULE__{
+            types: %{required(atom()) => ExType.Type.t()}
+          }
+
+    defstruct [:types]
   end
 
   defmodule Port do
