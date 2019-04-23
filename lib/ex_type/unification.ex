@@ -119,6 +119,10 @@ defmodule ExType.Unification do
     end
   end
 
+  def unify_pattern({:<<>>, _, []}, %Type.BitString{} = type, context) do
+    {:ok, type, context}
+  end
+
   def unify_pattern(pattern, type, context) do
     Helper.pattern_error(pattern, type, context)
   end
@@ -132,12 +136,12 @@ defmodule ExType.Unification do
 
   def unify_guard({{:., _, [:erlang, :is_binary]}, _, [{var, _, ctx}]}, context)
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.BitString{kind: :binary})}
+    {:ok, Context.update_scope(context, var, %Type.BitString{})}
   end
 
   def unify_guard({{:., _, [:erlang, :is_bitstring]}, _, [{var, _, ctx}]}, context)
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.BitString{kind: :bitstring})}
+    {:ok, Context.update_scope(context, var, %Type.BitString{})}
   end
 
   def unify_guard({{:., _, [:erlang, :is_integer]}, _, [{var, _, ctx}]}, context)

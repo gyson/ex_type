@@ -372,11 +372,11 @@ defmodule ExType.Typespec do
   # TODO: as_boolean
 
   def eval_type({:binary, _, []}, _) do
-    %Type.BitString{kind: :binary}
+    %Type.BitString{}
   end
 
   def eval_type({:bitstring, _, []}, _) do
-    %Type.BitString{kind: :bitstring}
+    %Type.BitString{}
   end
 
   def eval_type({:boolean, _, []}, context) do
@@ -650,6 +650,9 @@ defmodule ExType.Typespec do
     case constraint do
       %Type.Any{} ->
         {:ok, type, Map.put(context, sv, type)}
+
+      _ ->
+        match_typespec(constraint, type, context)
     end
   end
 

@@ -230,13 +230,12 @@ defmodule ExType.Type do
     defstruct [:types]
   end
 
+  # TODO: distinguish bitstring and binary ???
   defmodule BitString do
     @moduledoc false
 
-    @type t :: %__MODULE__{
-            kind: :binary | :bitstring
-          }
+    @type t :: %__MODULE__{}
 
-    defstruct [:kind]
+    defstruct []
   end
 end

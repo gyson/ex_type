@@ -26,16 +26,11 @@ defmodule ExType.Checker do
   def eval({:<<>>, _, _}, context) do
     # TODO: type check internal arguments
     # TODO: distinguish binary and bitstring
-    {:ok, %Type.BitString{kind: :bitstring}, context}
+    {:ok, %Type.BitString{}, context}
   end
 
   def eval(block, context) when is_binary(block) do
-    {:ok, %Type.BitString{kind: :binary}, context}
-  end
-
-  # bitstring literal
-  def eval(block, context) when is_bitstring(block) do
-    {:ok, %Type.BitString{kind: :bitstring}, context}
+    {:ok, %Type.BitString{}, context}
   end
 
   def eval({:%, _, [struct, {:%{}, _, args}]} = code, context) do
@@ -54,24 +49,6 @@ defmodule ExType.Checker do
     else
       Helper.eval_error(code, context)
     end
-  end
-
-  # binary literal
-  def eval(block, context) when is_binary(block) do
-    {:ok, %Type.BitString{kind: :binary}, context}
-  end
-
-  def eval({:<<>>, _, args}, context) do
-    for {:::, _, [left, right]} <- args do
-      {:ok, val, _} = eval(left, context)
-
-      case {val, right} do
-        {%Type.BitString{kind: :binary}, {:binary, [], []}} ->
-          :ok
-      end
-    end
-
-    {:ok, %Type.BitString{kind: :binary}, context}
   end
 
   # atom literal

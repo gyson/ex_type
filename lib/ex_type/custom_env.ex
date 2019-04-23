@@ -92,7 +92,14 @@ defmodule ExType.CustomEnv do
 
   def process_defs(call, block, caller_env, defps) do
     # save call and do block, and eval it
-    {name, _meta, args} = call
+    {name, _meta, args} =
+      case call do
+        {:when, _, [{name, meta, args}, _guard]} ->
+          {name, meta, args}
+
+        other ->
+          other
+      end
 
     # make `:elixir_expand.expand` works as expected
     current_vars =
@@ -153,21 +160,22 @@ defmodule ExType.CustomEnv do
 
     raw_fn = %Type.RawFunction{args: args, body: body, context: context}
 
-    {:ok, [{inputs, output, map}]} = Typespec.get_spec(module, name, length(args))
+    case Typespec.get_spec(module, name, length(args)) do
+      {:ok, [{inputs, output, map}]} ->
+        fn_typespec = %Type.TypedFunction{
+          inputs: inputs,
+          output: output
+        }
 
-    fn_typespec = %Type.TypedFunction{
-      inputs: inputs,
-      output: output
-    }
+        path_name = "#{Macro.to_string(module)}.#{name}/#{length(args)}"
 
-    path_name = "#{Macro.to_string(module)}.#{name}/#{length(args)}"
+        case Typespec.match_typespec(fn_typespec, raw_fn, map) do
+          {:ok, _type, _} ->
+            IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
 
-    case Typespec.match_typespec(fn_typespec, raw_fn, map) do
-      {:ok, _type, _} ->
-        IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
-
-      {:error, _error} ->
-        IO.puts("#{Emoji.one_test_fail()}  #{path_name}")
+          {:error, _error} ->
+            IO.puts("#{Emoji.one_test_fail()}  #{path_name}")
+        end
     end
   end
 end

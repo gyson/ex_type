@@ -174,6 +174,20 @@ defimpl Typespecable, for: Type.Atom do
   def get_protocol_path(_), do: {:ok, Atom}
 end
 
+defimpl Typespecable, for: Type.Reference do
+  def to_quote(%Type.Reference{}) do
+    quote do
+      reference()
+    end
+  end
+
+  def resolve_vars(type, _) do
+    type
+  end
+
+  def get_protocol_path(_), do: {:ok, Reference}
+end
+
 defimpl Typespecable, for: Type.AnyFunction do
   def to_quote(%Type.AnyFunction{}) do
     quote do
@@ -275,9 +289,9 @@ defimpl Typespecable, for: Type.TypedTuple do
 end
 
 defimpl Typespecable, for: Type.BitString do
-  def to_quote(%Type.BitString{kind: kind}) do
+  def to_quote(%Type.BitString{}) do
     quote do
-      unquote(kind)()
+      bitstring()
     end
   end
 
