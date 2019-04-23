@@ -18,7 +18,11 @@ The package can be installed by adding `ex_type` to your list of dependencies in
 ```elixir
 def deps do
   [
-    {:ex_type, "~> 0.1.0"}
+    # Required developement dependency
+    {:ex_type, "~> 0.1.0", only: :dev, runtime: false},
+
+    # Optional runtime dependency
+    {:ex_type_runtime, "~> 0.1.0"}
   ]
 end
 ```
