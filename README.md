@@ -29,6 +29,10 @@ end
 
 Documentation can be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex_type).
 
+## Guide
+
+TODO
+
 ## Development Note
 
 - Use `MIX_ENV=test iex -S mix` to access test context.
