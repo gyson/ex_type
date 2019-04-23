@@ -36,12 +36,12 @@ defmodule Mix.Tasks.Type do
       end
 
     includes =
-      Keyword.get(config, :only, ["lib/**/*.ex"])
+      Keyword.get(config, :include, ["lib/**/*.ex"])
       |> Enum.flat_map(fn glob -> Path.wildcard(Path.join(cwd, glob)) end)
       |> Enum.into(MapSet.new())
 
     excludes =
-      Keyword.get(config, :except, [])
+      Keyword.get(config, :exclude, [])
       |> Enum.flat_map(fn glob -> Path.wildcard(Path.join(cwd, glob)) end)
       |> Enum.into(MapSet.new())
 
