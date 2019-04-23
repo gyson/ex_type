@@ -21,7 +21,8 @@ defmodule ExType.CustomEnv do
 
       filter = ExType.Filter.get()
 
-      # check each defs should have spec.
+      # TODO: it should check all public functions and private functions with spec.
+
       defs
       # support "mix type" with filter
       |> Enum.filter(fn {{name, _, args}, _} ->

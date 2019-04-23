@@ -5,11 +5,15 @@ defmodule ExType.MixProject do
     [
       app: :ex_type,
       version: "0.1.0",
+      description: "A type checker for Elixir",
       elixir: "~> 1.8",
       elixirc_paths: elixirc_paths(),
       start_permanent: Mix.env() == :prod,
+      package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix]]
+      dialyzer: [plt_add_apps: [:mix]],
+      name: "ExType",
+      source_url: "https://github.com/gyson/ex_type"
     ]
   end
 
@@ -34,5 +38,12 @@ defmodule ExType.MixProject do
       :test -> ["lib", "test"]
       _ -> ["lib"]
     end
+  end
+
+  defp package do
+    %{
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/gyson/ex_type"}
+    }
   end
 end

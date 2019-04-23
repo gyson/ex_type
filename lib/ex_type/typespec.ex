@@ -428,8 +428,9 @@ defmodule ExType.Typespec do
     ])
   end
 
-  def eval_type({:iolist, _meta, []}, _context) do
-    Helper.todo()
+  def eval_type({:iolist, meta, []}, context) do
+    # TODO: fix this
+    eval_type({:list, meta, []}, context)
   end
 
   def eval_type({:keyword, meta, []}, context) do

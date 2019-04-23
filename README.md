@@ -13,8 +13,7 @@ A type checker for Elixir.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `ex_type` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `ex_type` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -24,10 +23,12 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex_type).
+Documentation can be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex_type).
 
-## Note
+## Development Note
 
-Use `MIX_ENV=test iex -S mix` to access test context.
+- Use `MIX_ENV=test iex -S mix` to access test context.
+
+## License
+
+MIT
