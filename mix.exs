@@ -24,6 +24,7 @@ defmodule ExType.MixProject do
   defp deps do
     [
       {:ex_type_runtime, "~> 0.1.0"},
+      {:ex_doc, "~> 0.20.2", only: :dev, runtime: false},
       {:dialyxir, github: "jeremyjh/dialyxir", only: :dev, runtime: false}
     ]
   end

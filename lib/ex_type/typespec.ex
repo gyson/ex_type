@@ -43,6 +43,7 @@ defmodule ExType.Typespec do
 
     quote do
       defmodule unquote(module_name) do
+        @moduledoc false
         unquote(block)
         unquote_splicing(defs)
       end

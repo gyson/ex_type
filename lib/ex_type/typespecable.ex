@@ -5,6 +5,8 @@ alias ExType.Typespec
 alias ExType.Typespecable
 
 defprotocol ExType.Typespecable do
+  @moduledoc false
+
   @spec to_quote(Type.t()) :: any()
 
   def to_quote(x)

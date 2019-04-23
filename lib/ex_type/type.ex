@@ -28,18 +28,24 @@ defmodule ExType.Type do
           | ExType.Type.BitString.t()
 
   defmodule Any do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule None do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule Union do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             types: [ExType.Type.t()]
           }
@@ -48,6 +54,8 @@ defmodule ExType.Type do
   end
 
   defmodule Intersection do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             types: [ExType.Type.t()]
           }
@@ -56,6 +64,8 @@ defmodule ExType.Type do
   end
 
   defmodule SpecVariable do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             name: atom(),
             type: ExType.Type.t(),
@@ -66,6 +76,8 @@ defmodule ExType.Type do
   end
 
   defmodule Protocol do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             module: ExType.Type.Atom.t()
           }
@@ -73,6 +85,8 @@ defmodule ExType.Type do
   end
 
   defmodule GenericProtocol do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             module: atom(),
             generic: ExType.Type.t()
@@ -81,18 +95,24 @@ defmodule ExType.Type do
   end
 
   defmodule Float do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule Integer do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule Atom do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             literal: boolean(),
             value: atom()
@@ -102,18 +122,24 @@ defmodule ExType.Type do
   end
 
   defmodule Reference do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule AnyFunction do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule RawFunction do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             args: [any()],
             body: any(),
@@ -124,6 +150,8 @@ defmodule ExType.Type do
   end
 
   defmodule TypedFunction do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             inputs: [ExType.Type.t()],
             output: ExType.Type.t()
@@ -132,6 +160,8 @@ defmodule ExType.Type do
   end
 
   defmodule List do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             type: ExType.Type.t()
           }
@@ -144,6 +174,8 @@ defmodule ExType.Type do
   #                   so it's struct like map
 
   defmodule Map do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             key: ExType.Type.t(),
             value: ExType.Type.t()
@@ -154,6 +186,8 @@ defmodule ExType.Type do
 
   # Struct and TypedStruct ?
   defmodule Struct do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             struct: atom(),
             types: %{required(atom()) => ExType.Type.t()}
@@ -163,24 +197,32 @@ defmodule ExType.Type do
   end
 
   defmodule Port do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule PID do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule AnyTuple do
+    @moduledoc false
+
     @type t :: %__MODULE__{}
 
     defstruct []
   end
 
   defmodule TypedTuple do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             types: [ExType.Type.t()]
           }
@@ -189,6 +231,8 @@ defmodule ExType.Type do
   end
 
   defmodule BitString do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             kind: :binary | :bitstring
           }

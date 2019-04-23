@@ -4,6 +4,8 @@ defmodule ExType.CustomEnv do
   use ExType.Helper
 
   defmodule BeforeCompile do
+    @moduledoc false
+
     defmacro __before_compile__(env) do
       get_attribute = fn module, attribute ->
         case Module.get_attribute(module, attribute) do

@@ -1,8 +1,12 @@
 defmodule ExType.Unification.PatternError do
+  @moduledoc false
+
   defstruct [:pattern, :type, :context, :line]
 end
 
 defmodule ExType.Unification.GuardError do
+  @moduledoc false
+
   defstruct [:guard, :context, :line]
 end
 

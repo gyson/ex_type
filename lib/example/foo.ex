@@ -1,4 +1,6 @@
 defmodule ExType.Example.Foo.StructExample do
+  @moduledoc false
+
   @type t() :: %__MODULE__{
           hi: binary(),
           ok: integer()
@@ -7,6 +9,8 @@ defmodule ExType.Example.Foo.StructExample do
 end
 
 defmodule ExType.Example.Foo do
+  @moduledoc false
+
   require T
 
   @spec unquote_example() :: integer()
