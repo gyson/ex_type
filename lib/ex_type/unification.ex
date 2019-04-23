@@ -63,6 +63,9 @@ defmodule ExType.Unification do
 
       %Type.Any{} ->
         {:ok, type, context}
+
+      _ ->
+        {:error, "not match atom #{atom} with other type"}
     end
   end
 

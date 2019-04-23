@@ -21,13 +21,18 @@ defmodule ExType.CustomEnv do
 
       filter = ExType.Filter.get()
 
-      # TODO: it should check all public functions and private functions with spec.
+      module = ExType.Helper.get_module(env.module)
 
-      defs
+      (defs ++ defps)
       # support "mix type" with filter
       |> Enum.filter(fn {{name, _, args}, _} ->
-        module = ExType.Helper.get_module(env.module)
         filter.({module, name, length(args)})
+      end)
+      |> Enum.filter(fn {{name, _, args}, _} ->
+        case ExType.Typespec.from_beam_spec(module, name, length(args)) do
+          {:ok, _} -> true
+          {:error, _} -> false
+        end
       end)
       # |> Helper.inspect
       |> Enum.map(fn {call, block} ->
