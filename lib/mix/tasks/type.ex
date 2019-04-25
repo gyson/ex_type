@@ -2,6 +2,8 @@ defmodule Mix.Tasks.Type do
   use Mix.Task
 
   def run([]) do
+    prepare()
+
     # could run in parallel
     for file <- get_files() do
       ExType.check(file)
@@ -12,6 +14,8 @@ defmodule Mix.Tasks.Type do
   # `mix type Enum.map` for single function
   # `mix type Enum.map/2` for single function with specified arity
   def run([filter]) when is_binary(filter) do
+    prepare()
+
     filter = ExType.Filter.parse(filter)
     ExType.Filter.register(filter)
 
@@ -19,6 +23,10 @@ defmodule Mix.Tasks.Type do
     for file <- get_files() do
       ExType.check(file)
     end
+  end
+
+  defp prepare() do
+    Mix.Task.run "loadpaths", []
   end
 
   defp get_files() do
