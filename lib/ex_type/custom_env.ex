@@ -25,6 +25,13 @@ defmodule ExType.CustomEnv do
 
       (defs ++ defps)
       # support "mix type" with filter
+      |> Enum.map(fn
+        {{:when, _, [{name, meta, args}, _guards]}, block} ->
+          {{name, meta, args}, block}
+
+        other ->
+          other
+      end)
       |> Enum.filter(fn {{name, _, args}, _} ->
         filter.({module, name, length(args)})
       end)
