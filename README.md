@@ -29,9 +29,21 @@ end
 
 Documentation can be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex_type).
 
-## Guide
+## Usage
 
-TODO
+```sh
+# type check for all code in `*.ex` files
+$ mix type
+
+# type check for specified module
+$ mix type Example.Module
+
+# type check for specified named function
+$ mix type Example.Module.function
+
+# type check for named function with specified arity
+$ mix type Example.Module.function/arity
+```
 
 ## Development Note
 
