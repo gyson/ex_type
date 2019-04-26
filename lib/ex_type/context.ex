@@ -22,6 +22,14 @@ defmodule ExType.Context do
   def update_type_variables(%__MODULE__{type_variables: type_variables} = context, name, type) do
     %{context | type_variables: Map.put(type_variables, name, type)}
   end
+
+  def replace_env(%__MODULE__{} = context, env) do
+    %{context | env: env}
+  end
+
+  def append_stack(%__MODULE__{stacks: stacks} = context, name, arity) do
+    %{context | stacks: [{name, arity} | stacks]}
+  end
 end
 
 defimpl Inspect, for: ExType.Context do

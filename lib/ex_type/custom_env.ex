@@ -118,7 +118,12 @@ defmodule ExType.CustomEnv do
       end)
       |> Enum.into(%{})
 
-    context = %Context{env: caller_env, functions: functions}
+    context =
+      %Context{
+        env: caller_env,
+        functions: functions
+      }
+      |> Context.append_stack(name, length(args))
 
     raw_fn = %Type.RawFunction{args: args, body: body, context: context}
 

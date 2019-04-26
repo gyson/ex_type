@@ -401,20 +401,38 @@ defmodule ExType.Checker do
       {:error, _} ->
         case Map.fetch(context.functions, {name, arity}) do
           {:ok, {fn_call, fn_block, fn_env}} ->
-            {_, fn_args, _, fn_body} = Parser.expand(fn_call, fn_block, fn_env)
+            {fn_name, fn_args, _, fn_body} = Parser.expand(fn_call, fn_block, fn_env)
+            fn_arity = length(fn_args)
 
-            fn_context = %Context{env: fn_env, functions: context.functions}
-
-            fn_context =
-              Enum.zip(fn_args, args_types)
-              |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
-                {:ok, _, acc_context} = Unification.unify_pattern(arg, type, acc_context)
-                acc_context
+            # detect recursive function without typespec
+            has_recursive_call? =
+              Enum.any?(context.stacks, fn {name, arity} ->
+                fn_name == name and fn_arity == arity
               end)
 
-            {:ok, type, _} = eval(fn_body, fn_context)
+            if has_recursive_call? do
+              {:error, "recurisive call with #{fn_name}/#{fn_arity}"}
+            else
+              fn_context =
+                context
+                |> Context.replace_env(fn_env)
+                |> Context.append_stack(fn_name, length(fn_args))
 
-            {:ok, type, context}
+              fn_context =
+                Enum.zip(fn_args, args_types)
+                |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
+                  {:ok, _, acc_context} = Unification.unify_pattern(arg, type, acc_context)
+                  acc_context
+                end)
+
+              case eval(fn_body, fn_context) do
+                {:ok, type, _} ->
+                  {:ok, type, context}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+            end
 
           :error ->
             context.env.functions
