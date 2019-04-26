@@ -32,17 +32,17 @@ Documentation can be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex
 ## Usage
 
 ```sh
-# type check for all code in `*.ex` files
+# type check for all code
 $ mix type
 
 # type check for specified module
-$ mix type Example.Module
+$ mix type ExType.Example.Foo
 
 # type check for specified named function
-$ mix type Example.Module.function
+$ mix type ExType.Example.Foo.hello
 
 # type check for named function with specified arity
-$ mix type Example.Module.function/arity
+$ mix type ExType.Example.Foo.hello/0
 ```
 
 ## Development Note

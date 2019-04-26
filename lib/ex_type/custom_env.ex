@@ -104,72 +104,21 @@ defmodule ExType.CustomEnv do
   end
 
   def process_defs(call, block, caller_env, defps) do
-    # save call and do block, and eval it
-    {name, _meta, args} =
-      case call do
-        {:when, _, [{name, meta, args}, _guard]} ->
-          {name, meta, args}
-
-        other ->
-          other
-      end
-
-    # make `:elixir_expand.expand` works as expected
-    current_vars =
-      args
-      |> Macro.postwalk([], fn
-        {name, meta, ctx} = it, acc when is_atom(name) and is_atom(ctx) ->
-          {it, [{name, meta, ctx} | acc]}
-
-        other, acc ->
-          {other, acc}
-      end)
-      |> elem(1)
-      |> Enum.map(fn {name, meta, ctx} ->
-        {{name, :elixir_utils.var_context(meta, ctx)}, {0, :term}}
-      end)
-      |> Enum.into(%{})
-
-    # update env
-    caller_env =
-      caller_env
-      |> Map.put(:function, {name, length(args)})
-      |> Map.put(:current_vars, current_vars)
+    {name, args, _guard, body} = Parser.expand(call, block, caller_env)
 
     module = Helper.get_module(caller_env.module)
 
     # TODO: support multiple functions pattern match
     functions =
       defps
-      |> Enum.map(fn {{fn_name, _, fn_args}, fn_body} ->
-        fn_arity = length(fn_args)
+      |> Enum.map(fn {fn_call, fn_body} ->
+        {fn_name, fn_args, _} = Parser.expand_call(fn_call)
 
-        {{fn_name, fn_arity}, {fn_args, fn_body, caller_env}}
+        {{fn_name, length(fn_args)}, {fn_call, fn_body, caller_env}}
       end)
       |> Enum.into(%{})
 
     context = %Context{env: caller_env, functions: functions}
-
-    body =
-      block
-      |> Macro.postwalk(fn
-        # support T.inspect
-        {:., m1, [{:__aliases__, m2, [:T]}, :inspect]} ->
-          {:., m1, [{:__aliases__, m2, [:ExType, :T]}, :inspect]}
-
-        # support T.assert
-        {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
-          case arg do
-            {operator, _, [left, right]} when operator in [:==, :::, :<, :>] ->
-              {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3,
-               [operator, left, Macro.escape(right)]}
-          end
-
-        code ->
-          code
-      end)
-      |> :elixir_expand.expand(caller_env)
-      |> elem(0)
 
     raw_fn = %Type.RawFunction{args: args, body: body, context: context}
 

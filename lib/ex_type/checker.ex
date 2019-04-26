@@ -400,7 +400,9 @@ defmodule ExType.Checker do
 
       {:error, _} ->
         case Map.fetch(context.functions, {name, arity}) do
-          {:ok, {fn_args, fn_body, fn_env}} ->
+          {:ok, {fn_call, fn_block, fn_env}} ->
+            {_, fn_args, _, fn_body} = Parser.expand(fn_call, fn_block, fn_env)
+
             fn_context = %Context{env: fn_env, functions: context.functions}
 
             fn_context =

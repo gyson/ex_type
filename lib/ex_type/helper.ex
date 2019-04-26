@@ -9,6 +9,7 @@ defmodule ExType.Helper do
       alias ExType.Type
       alias ExType.Emoji
       alias ExType.Helper
+      alias ExType.Parser
       alias ExType.Typespec
       alias ExType.Typespecable
       alias ExType.Unification
