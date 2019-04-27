@@ -143,45 +143,46 @@ defmodule ExType.Unification do
     Helper.throw("unsupported pattern")
   end
 
-  @spec unify_guard(any(), Context.t()) :: {:ok, Context.t()} | {:error, any()}
+  @spec unify_guard(Context.t(), any()) :: Context.t()
 
-  def unify_guard({{:., _, [:erlang, :is_atom]}, _, [{var, _, ctx}]}, context)
+  def unify_guard(context, {{:., _, [:erlang, :is_atom]}, _, [{var, _, ctx}]})
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.Atom{literal: false})}
+    Context.update_scope(context, var, %Type.Atom{literal: false})
   end
 
-  def unify_guard({{:., _, [:erlang, :is_binary]}, _, [{var, _, ctx}]}, context)
+  def unify_guard(context, {{:., _, [:erlang, :is_binary]}, _, [{var, _, ctx}]})
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.BitString{})}
+    Context.update_scope(context, var, %Type.BitString{})
   end
 
-  def unify_guard({{:., _, [:erlang, :is_bitstring]}, _, [{var, _, ctx}]}, context)
+  def unify_guard(context, {{:., _, [:erlang, :is_bitstring]}, _, [{var, _, ctx}]})
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.BitString{})}
+    Context.update_scope(context, var, %Type.BitString{})
   end
 
-  def unify_guard({{:., _, [:erlang, :is_integer]}, _, [{var, _, ctx}]}, context)
+  def unify_guard(context, {{:., _, [:erlang, :is_integer]}, _, [{var, _, ctx}]})
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.Integer{})}
+    Context.update_scope(context, var, %Type.Integer{})
   end
 
-  def unify_guard({{:., _, [:erlang, :is_float]}, _, [{var, _, ctx}]}, context)
+  def unify_guard(context, {{:., _, [:erlang, :is_float]}, _, [{var, _, ctx}]})
       when is_atom(var) and is_atom(ctx) do
-    {:ok, Context.update_scope(context, var, %Type.Float{})}
+    Context.update_scope(context, var, %Type.Float{})
   end
 
-  def unify_guard({{:., _, [:erlang, op]}, _, [_, _]}, context) when op in [:>, :<, :>=, :<=] do
-    {:ok, context}
+  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :<=] do
+    context
   end
 
   # TODO: add more type check
 
-  def unify_guard({{:., _, [:erlang, :andalso]}, _, [left, right]}, context) do
-    {:ok, context} = unify_guard(left, context)
-    unify_guard(right, context)
+  def unify_guard(context, {{:., _, [:erlang, :andalso]}, _, [left, right]}) do
+    context
+    |> unify_guard(left)
+    |> unify_guard(right)
   end
 
-  def unify_guard(guard, context) do
-    Helper.guard_error(guard, context)
+  def unify_guard(_context, _guard) do
+    Helper.throw("unsupport guard")
   end
 end

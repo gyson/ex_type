@@ -195,7 +195,7 @@ defmodule ExType.Checker do
           {:ok, output} ->
             {:ok, output, context}
 
-          {:error, error} ->
+          {:error, :not_found} ->
             cond do
               # handle exception without spec
               name == :exception and length(args) == 1 and Helper.is_exception(module) ->
@@ -220,8 +220,11 @@ defmodule ExType.Checker do
                   |> Macro.to_string()
 
                 IO.puts("#{Emoji.error()}  Type Error `#{type_error}` at #{location}")
-                {:error, error}
+                {:error, type_error}
             end
+
+          {:error, error} ->
+            {:error, error}
         end
     end
   end
@@ -274,26 +277,35 @@ defmodule ExType.Checker do
   def eval({:case, _, [exp, [do: block]]}, context) do
     {:ok, type, context} = eval(exp, context)
 
-    unioned_type =
-      for {:->, _, [[left], right]} <- block do
-        new_context =
-          case left do
-            {:when, _, [when_left, when_right]} ->
-              new_context = Unification.unify_pattern(context, when_left, type)
-              {:ok, new_context} = Unification.unify_guard(when_right, new_context)
-              new_context
+    try do
+      unioned_type =
+        Enum.reduce(block, {type, []}, fn {:->, _, [[left], right]}, {acc_type, results} ->
+          new_context =
+            case left do
+              {:when, _, [when_left, when_right]} ->
+                context
+                |> Unification.unify_pattern(when_left, acc_type)
+                |> Unification.unify_guard(when_right)
 
-            _ ->
-              Unification.unify_pattern(context, left, type)
+              _ ->
+                Unification.unify_pattern(context, left, acc_type)
+            end
+
+          case eval(right, new_context) do
+            {:ok, result_type, _} ->
+              {acc_type, [result_type | results]}
+
+            {:error, error} ->
+              throw(error)
           end
+        end)
+        |> elem(1)
+        |> Typespec.union_types()
 
-        {:ok, result_type, _} = eval(right, new_context)
-
-        result_type
-      end
-      |> Typespec.union_types()
-
-    {:ok, unioned_type, context}
+      {:ok, unioned_type, context}
+    catch
+      error -> {:error, error}
+    end
   end
 
   def eval({:cond, _, [[do: block]]}, context) do
@@ -394,12 +406,11 @@ defmodule ExType.Checker do
 
     module = Helper.get_module(context.env.module)
 
-    # TODO: split eval_spec to get_spec and eval_spec
     case Typespec.eval_spec(module, name, args_types) do
       {:ok, output} ->
         {:ok, output, context}
 
-      {:error, _} ->
+      {:error, :not_found} ->
         case Map.fetch(context.functions, {name, arity}) do
           {:ok, {fn_call, fn_block, fn_env}} ->
             {fn_name, fn_args, _, fn_body} = Parser.expand(fn_call, fn_block, fn_env)
@@ -450,6 +461,9 @@ defmodule ExType.Checker do
                 Helper.eval_error(code, context)
             end
         end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

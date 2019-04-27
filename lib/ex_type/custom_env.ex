@@ -127,7 +127,7 @@ defmodule ExType.CustomEnv do
 
     raw_fn = %Type.RawFunction{args: args, body: body, context: context}
 
-    case Typespec.get_spec(module, name, length(args)) do
+    case Typespec.fetch_specs(module, name, length(args)) do
       {:ok, [{inputs, output, map}]} ->
         fn_typespec = %Type.TypedFunction{
           inputs: inputs,

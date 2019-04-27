@@ -95,12 +95,12 @@ defmodule ExType.Typespec do
   def from_beam_spec(module, name, arity) when is_atom(module) do
     overrided_module = String.to_atom("Elixir.ExType.Typespec.#{module}")
 
-    case fetch_specs(overrided_module, name, arity) do
+    case fetch_quoted_specs(overrided_module, name, arity) do
       {:ok, specs} ->
         {:ok, convert_specs(specs, name)}
 
       {:error, _} ->
-        case fetch_specs(module, name, arity) do
+        case fetch_quoted_specs(module, name, arity) do
           {:ok, specs} ->
             {:ok, convert_specs(specs, name)}
 
@@ -117,7 +117,7 @@ defmodule ExType.Typespec do
     end)
   end
 
-  def fetch_specs(module, name, arity) do
+  def fetch_quoted_specs(module, name, arity) do
     case Code.Typespec.fetch_specs(module) do
       {:ok, specs} ->
         matched =
@@ -177,7 +177,7 @@ defmodule ExType.Typespec do
             types:
               multi
               |> Enum.reject(fn x -> x == %Type.None{} end)
-              # TODO: support other container types
+              # TODO: support other container types, use group by
               |> Enum.split_with(fn
                 %Type.List{} -> true
                 _ -> false
@@ -606,7 +606,7 @@ defmodule ExType.Typespec do
     Helper.todo("cannot match eval_type")
   end
 
-  def get_spec(module, name, arity) do
+  def fetch_specs(module, name, arity) do
     case from_beam_spec(module, name, arity) do
       {:ok, specs} ->
         result =
@@ -642,7 +642,7 @@ defmodule ExType.Typespec do
   end
 
   def eval_spec(module, name, input_types) do
-    case get_spec(module, name, length(input_types)) do
+    case fetch_specs(module, name, length(input_types)) do
       {:ok, specs} ->
         result_types =
           specs
@@ -657,13 +657,20 @@ defmodule ExType.Typespec do
           end)
 
         if Enum.empty?(result_types) do
-          {:error, "not match any"}
+          expr =
+            quote do
+              unquote(module).unquote(name)(
+                unquote_splicing(Enum.map(input_types, &Typespecable.to_quote/1))
+              )
+            end
+
+          {:error, "spec not match for #{Macro.to_string(expr)}"}
         else
           {:ok, union_types(result_types)}
         end
 
-      {:error, error} ->
-        {:error, error}
+      {:error, _} ->
+        {:error, :not_found}
     end
   end
 
