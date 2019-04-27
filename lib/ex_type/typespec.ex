@@ -58,21 +58,15 @@ defmodule ExType.Typespec do
         {:ok, left, type}
 
       {:error, _} ->
-        case fetch_type(module, name, arity) do
-          {:ok, left, type} ->
-            {:ok, left, type}
-
-          {:error, error} ->
-            {:error, error}
-        end
+        fetch_type(module, name, arity)
     end
   end
 
   def fetch_type(module, name, arity) do
     case Code.Typespec.fetch_types(module) do
-      {:ok, ts} ->
+      {:ok, raw_types} ->
         result =
-          ts
+          raw_types
           |> Enum.map(fn {kind, type} when kind in [:type, :typep, :opaque] ->
             Code.Typespec.type_to_quoted(type)
           end)
@@ -160,6 +154,7 @@ defmodule ExType.Typespec do
     end
   end
 
+  # [x] | [y] => [x | y]
   def union_types(types) do
     types
     |> Enum.flat_map(fn
@@ -182,6 +177,25 @@ defmodule ExType.Typespec do
             types:
               multi
               |> Enum.reject(fn x -> x == %Type.None{} end)
+              # TODO: support other container types
+              |> Enum.split_with(fn
+                %Type.List{} -> true
+                _ -> false
+              end)
+              |> case do
+                {multi_list, rest} when length(multi_list) > 1 ->
+                  new_list = %Type.List{
+                    type:
+                      multi_list
+                      |> Enum.map(fn %Type.List{type: type} -> type end)
+                      |> union_types()
+                  }
+
+                  [new_list | rest]
+
+                {multi_list, rest} ->
+                  multi_list ++ rest
+              end
               |> Enum.sort()
           }
         end
@@ -701,8 +715,7 @@ defmodule ExType.Typespec do
     new_fn_context =
       Enum.zip(args, resolved_inputs)
       |> Enum.reduce(fn_context, fn {arg, resolved_input}, fn_context ->
-        {:ok, _, fn_context} = ExType.Unification.unify_pattern(arg, resolved_input, fn_context)
-        fn_context
+        ExType.Unification.unify_pattern(fn_context, arg, resolved_input)
       end)
 
     # TODO: type guards

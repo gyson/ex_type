@@ -165,7 +165,7 @@ defmodule ExType.Checker do
         end
 
       ::: ->
-        {:ok, _, new_context} = Unification.unify_pattern(left, type_right, context)
+        new_context = Unification.unify_pattern(context, left, type_right)
         eval(nil, new_context)
     end
   end
@@ -264,11 +264,13 @@ defmodule ExType.Checker do
   end
 
   def eval({:=, _, [left, right]}, context) do
-    {:ok, type, context} = eval(right, context)
-    Unification.unify_pattern(left, type, context)
+    {:ok, type, new_context} = eval(right, context)
+    {:ok, type, Unification.unify_pattern(new_context, left, type)}
   end
 
   # unify pattern and spec
+
+  # TODO: improve it for union types
   def eval({:case, _, [exp, [do: block]]}, context) do
     {:ok, type, context} = eval(exp, context)
 
@@ -277,13 +279,12 @@ defmodule ExType.Checker do
         new_context =
           case left do
             {:when, _, [when_left, when_right]} ->
-              {:ok, _, new_context} = Unification.unify_pattern(when_left, type, context)
+              new_context = Unification.unify_pattern(context, when_left, type)
               {:ok, new_context} = Unification.unify_guard(when_right, new_context)
               new_context
 
             _ ->
-              {:ok, _, new_context} = Unification.unify_pattern(left, type, context)
-              new_context
+              Unification.unify_pattern(context, left, type)
           end
 
         {:ok, result_type, _} = eval(right, new_context)
@@ -341,7 +342,7 @@ defmodule ExType.Checker do
 
         generic_type = Map.fetch!(map, generic)
 
-        {:ok, _, new_context} = Unification.unify_pattern(left, generic_type, context)
+        new_context = Unification.unify_pattern(context, left, generic_type)
 
         {:ok, type, _} = eval(expr, new_context)
 
@@ -353,7 +354,7 @@ defmodule ExType.Checker do
     case args do
       [{:<-, _, [left, right]}, [do: expr]] ->
         {:ok, type, _} = eval(right, context)
-        {:ok, _, new_context} = Unification.unify_pattern(left, type, context)
+        new_context = Unification.unify_pattern(context, left, type)
         eval(expr, new_context)
     end
   end
@@ -365,13 +366,12 @@ defmodule ExType.Checker do
         new_context =
           case left do
             {:when, _, [when_left, when_right]} ->
-              {:ok, _, new_context} = Unification.unify_pattern(when_left, %Type.Any{}, context)
+              new_context = Unification.unify_pattern(context, when_left, %Type.Any{})
               {:ok, new_context} = Unification.unify_guard(when_right, new_context)
               new_context
 
             _ ->
-              {:ok, _, new_context} = Unification.unify_pattern(left, %Type.Any{}, context)
-              new_context
+              Unification.unify_pattern(context, left, %Type.Any{})
           end
 
         {:ok, type, _} = eval(right, new_context)
@@ -394,6 +394,7 @@ defmodule ExType.Checker do
 
     module = Helper.get_module(context.env.module)
 
+    # TODO: split eval_spec to get_spec and eval_spec
     case Typespec.eval_spec(module, name, args_types) do
       {:ok, output} ->
         {:ok, output, context}
@@ -421,8 +422,7 @@ defmodule ExType.Checker do
               fn_context =
                 Enum.zip(fn_args, args_types)
                 |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
-                  {:ok, _, acc_context} = Unification.unify_pattern(arg, type, acc_context)
-                  acc_context
+                  Unification.unify_pattern(acc_context, arg, type)
                 end)
 
               case eval(fn_body, fn_context) do

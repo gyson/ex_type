@@ -172,4 +172,10 @@ defmodule ExType.Example.Foo do
   def none_example() do
     raise ArgumentError, "test"
   end
+
+  @spec union_example({:ok, binary()} | :error) :: binary()
+
+  def union_example({:ok, x}) do
+    x
+  end
 end

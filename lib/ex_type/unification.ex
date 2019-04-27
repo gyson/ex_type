@@ -15,168 +15,132 @@ defmodule ExType.Unification do
 
   use ExType.Helper
 
-  @spec unify_pattern(any(), Type.t(), Context.t()) :: {:ok, any(), Context.t()} | {:error, any()}
+  @spec unify_pattern(Context.t(), any(), Type.t()) :: Context.t()
 
-  def unify_pattern(pattern, %Type.Union{types: types}, context) do
-    # TODO: fix this. this is not best / correct behaviour
-    Enum.reduce_while(types, {:error, "not match union"}, fn type, acc ->
-      case unify_pattern(pattern, type, context) do
-        {:ok, _, _} = result ->
-          {:halt, result}
+  # {:ok, yyy} = {:ok, xxx} | :error
+  # should be able to match yyy to xxx
 
-        {:error, _} ->
-          {:cont, acc}
-      end
-    end)
+  def unify_pattern(context, pattern, %Type.Union{types: types}) do
+    scopes =
+      Enum.flat_map(types, fn type ->
+        try do
+          [unify_pattern(context, pattern, type).scope]
+        catch
+          _ -> []
+        end
+      end)
+
+    if Enum.empty?(scopes) do
+      Helper.throw("not match union type")
+    end
+
+    final_scope =
+      Enum.reduce(scopes, fn s1, s2 ->
+        Map.merge(s1, s2, fn _, t1, t2 ->
+          Typespec.union_types([t1, t2])
+        end)
+      end)
+
+    %{context | scope: final_scope}
   end
 
-  def unify_pattern({:\\, _, [left, _right]}, type, context) do
+  def unify_pattern(context, {:\\, _, [left, _right]}, type) do
     # TODO: need to handle right ?
-    unify_pattern(left, type, context)
+    unify_pattern(context, left, type)
   end
 
-  def unify_pattern(integer, type, context) when is_integer(integer) do
-    case type do
-      %Type.Integer{} ->
-        {:ok, type, context}
-    end
+  def unify_pattern(context, integer, %Type.Integer{}) when is_integer(integer) do
+    context
   end
 
-  def unify_pattern(float, type, context) when is_float(float) do
-    case type do
-      %Type.Float{} ->
-        {:ok, type, context}
-    end
+  def unify_pattern(context, float, %Type.Float{}) when is_float(float) do
+    context
   end
 
-  def unify_pattern(binary, type, context) when is_binary(binary) do
-    case type do
-      %Type.BitString{} ->
-        {:ok, type, context}
-    end
+  def unify_pattern(context, binary, %Type.BitString{}) when is_binary(binary) do
+    context
   end
 
-  def unify_pattern(atom, type, context) when is_atom(atom) do
-    case type do
-      %Type.Atom{literal: true, value: ^atom} ->
-        {:ok, type, context}
+  def unify_pattern(context, atom, %Type.Atom{literal: true, value: atom}) when is_atom(atom) do
+    context
+  end
 
-      %Type.Any{} ->
-        {:ok, type, context}
-
-      _ ->
-        {:error, "not match atom #{atom} with other type"}
-    end
+  def unify_pattern(context, atom, %Type.Any{}) when is_atom(atom) do
+    context
   end
 
   # {:ok, type, right}
-  def unify_pattern({var, _, ctx}, type, context) when is_atom(var) and is_atom(ctx) do
-    {:ok, type, Context.update_scope(context, var, type)}
+  def unify_pattern(context, {var, _, ctx}, type) when is_atom(var) and is_atom(ctx) do
+    Context.update_scope(context, var, type)
   end
 
   # tuple
-  def unify_pattern({first, second}, type, context) do
-    unify_pattern({:{}, [], [first, second]}, type, context)
+  def unify_pattern(context, {first, second}, type) do
+    unify_pattern(context, {:{}, [], [first, second]}, type)
   end
 
-  def unify_pattern({:{}, _, args} = pattern, type, context) do
-    case type do
-      %Type.TypedTuple{types: types} when length(args) == length(types) ->
-        {unified_types, context} =
-          Enum.zip(args, types)
-          |> Enum.reduce({[], context}, fn {arg, t}, {acc, context} ->
-            {:ok, type, context} = unify_pattern(arg, t, context)
-            {acc ++ [type], context}
-          end)
+  def unify_pattern(context, {:{}, _, args}, %Type.TypedTuple{types: types})
+      when length(args) == length(types) do
+    Enum.zip(args, types)
+    |> Enum.reduce(context, fn {arg, type}, acc_context ->
+      unify_pattern(acc_context, arg, type)
+    end)
+  end
 
-        {:ok, %Type.TypedTuple{types: unified_types}, context}
+  def unify_pattern(context, {:{}, _, args}, %Type.AnyTuple{}) do
+    Enum.reduce(args, context, fn arg, acc_context ->
+      unify_pattern(acc_context, arg, %Type.Any{})
+    end)
+  end
 
-      %Type.AnyTuple{} ->
-        unify_pattern(pattern, %Type.Any{}, context)
+  def unify_pattern(context, {:{}, _, _} = pattern, %Type.Any{}) do
+    unify_pattern(context, pattern, %Type.AnyTuple{})
+  end
 
-      %Type.Any{} ->
-        new_context =
-          Enum.reduce(args, context, fn arg, acc_context ->
-            {:ok, _, acc_context} = unify_pattern(arg, %Type.Any{}, acc_context)
-            acc_context
-          end)
+  def unify_pattern(context, list, %Type.List{type: inner_type} = type) when is_list(list) do
+    case list do
+      [] ->
+        context
 
-        {:ok, %Type.Any{}, new_context}
+      [{:|, _, [left, right]}] ->
+        context
+        |> unify_pattern(left, inner_type)
+        |> unify_pattern(right, type)
 
-      _ ->
-        Helper.pattern_error(pattern, type, context)
+      [x | rest] ->
+        context
+        |> unify_pattern(x, inner_type)
+        |> unify_pattern(rest, type)
     end
   end
 
-  # handle list
-  def unify_pattern(list, type, context) when is_list(list) do
-    case type do
-      %Type.List{type: inner_type} ->
-        case Enum.reverse(list) do
-          [] ->
-            {:ok, type, context}
-
-          # if it's [a, b, c | d]
-          [{:|, _, [left, right]} | items] ->
-            new_context =
-              [left | items]
-              |> Enum.reverse()
-              |> Enum.reduce(context, fn pattern, acc_context ->
-                {:ok, _, new_acc} = unify_pattern(pattern, inner_type, acc_context)
-                new_acc
-              end)
-
-            {:ok, _, new_context} = unify_pattern(right, type, new_context)
-
-            {:ok, type, new_context}
-
-          # [a, b, c] = [1, 2, 3]
-          _ ->
-            new_context =
-              Enum.reduce(list, context, fn pattern, acc_context ->
-                {:ok, _, new_acc} = unify_pattern(pattern, inner_type, acc_context)
-                new_acc
-              end)
-
-            {:ok, type, new_context}
-        end
-
-      %Type.Any{} ->
-        unify_pattern(list, %Type.List{type: %Type.Any{}}, context)
-    end
+  def unify_pattern(context, list, %Type.Any{}) when is_list(list) do
+    unify_pattern(context, list, %Type.List{type: %Type.Any{}})
   end
 
-  def unify_pattern({:<<>>, _, []}, %Type.BitString{} = type, context) do
-    {:ok, type, context}
+  def unify_pattern(context, {:<<>>, _, []}, %Type.BitString{}) do
+    context
   end
 
-  def unify_pattern({:=, _, [left, right]}, type, context) do
-    case unify_pattern(right, type, context) do
-      {:ok, type, context} ->
-        unify_pattern(left, type, context)
-
-      {:error, error} ->
-        {:error, error}
-    end
+  def unify_pattern(context, {:=, _, [left, right]}, type) do
+    context
+    |> unify_pattern(right, type)
+    |> unify_pattern(left, type)
   end
 
-  def unify_pattern({:^, _, [_]}, type, context) do
+  def unify_pattern(context, {:^, _, [_]}, _type) do
     # TODO: fix this
-    {:ok, type, context}
+    context
   end
 
-  def unify_pattern({:%{}, _, [{left, right}]}, %Type.Map{key: key, value: value}, context) do
-    case unify_pattern(left, key, context) do
-      {:ok, _, context} ->
-        unify_pattern(right, value, context)
-
-      {:error, error} ->
-        {:error, error}
-    end
+  def unify_pattern(context, {:%{}, _, [{left, right}]}, %Type.Map{key: key, value: value}) do
+    context
+    |> unify_pattern(left, key)
+    |> unify_pattern(right, value)
   end
 
-  def unify_pattern(pattern, type, context) do
-    Helper.pattern_error(pattern, type, context)
+  def unify_pattern(_context, _pattern, _type) do
+    Helper.throw("unsupported pattern")
   end
 
   @spec unify_guard(any(), Context.t()) :: {:ok, Context.t()} | {:error, any()}
