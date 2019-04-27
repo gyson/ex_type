@@ -27,8 +27,6 @@ def deps do
 end
 ```
 
-Documentation can be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex_type).
-
 ## Rules
 
 To help ExType infer types, following rules are required:
@@ -58,6 +56,12 @@ $ mix type ExType.Example.Foo.hello/0
 ## Example
 
 There are some examples in `lib/ex_type/example/` directory.
+
+## Status
+
+This project is still in very early stage with active development. You are likely to hit
+uncovered case when playing more complex code beyond example. Be free to submit github
+issue for bug report or any feedback.
 
 ## Development Note
 
