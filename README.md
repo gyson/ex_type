@@ -29,6 +29,16 @@ end
 
 Documentation can be found at [https://hexdocs.pm/ex_type](https://hexdocs.pm/ex_type).
 
+## Rules
+
+To help ExType infer types, following rules are required:
+
+1. All public functions require explicit typespec.
+
+2. All recursive functions require explicit typespec.
+
+Basically, you do not need to add typespec for non-recursive private functions.
+
 ## Usage
 
 ```sh
@@ -44,6 +54,10 @@ $ mix type ExType.Example.Foo.hello
 # type check for named function with specified arity
 $ mix type ExType.Example.Foo.hello/0
 ```
+
+## Example
+
+There are some examples in `lib/ex_type/example/` directory.
 
 ## Development Note
 
