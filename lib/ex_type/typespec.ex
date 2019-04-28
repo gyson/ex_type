@@ -727,18 +727,18 @@ defmodule ExType.Typespec do
 
     # TODO: type guards
 
-    case ExType.Checker.eval(body, new_fn_context) do
-      {:ok, result_type, _} ->
-        case match_typespec(output, result_type, context) do
-          {:ok, _, new_context} ->
-            {:ok, %Type.TypedFunction{inputs: resolved_inputs, output: result_type}, new_context}
+    try do
+      {_, result_type} = ExType.Checker.eval(new_fn_context, body)
 
-          {:error, error} ->
-            {:error, error}
-        end
+      case match_typespec(output, result_type, context) do
+        {:ok, _, new_context} ->
+          {:ok, %Type.TypedFunction{inputs: resolved_inputs, output: result_type}, new_context}
 
-      {:error, error} ->
-        {:error, error}
+        {:error, error} ->
+          {:error, error}
+      end
+    catch
+      error -> {:error, error}
     end
   end
 
