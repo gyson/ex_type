@@ -4,7 +4,7 @@ defmodule ExType.MixProject do
   def project do
     [
       app: :ex_type,
-      version: "0.1.2",
+      version: "0.2.0",
       description: "A type checker for Elixir",
       elixir: "~> 1.8",
       elixirc_paths: elixirc_paths(),
