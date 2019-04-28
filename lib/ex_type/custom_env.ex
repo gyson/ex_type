@@ -140,8 +140,12 @@ defmodule ExType.CustomEnv do
           Typespec.match_typespec(map, fn_typespec, raw_fn)
           IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
         catch
-          _error ->
+          error ->
             IO.puts("#{Emoji.one_test_fail()}  #{path_name}")
+
+            if ExType.Debug.enabled?() do
+              IO.inspect(error, label: "   #{Emoji.error()}  ")
+            end
         end
     end
   end

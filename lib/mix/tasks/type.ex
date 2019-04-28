@@ -43,6 +43,10 @@ defmodule Mix.Tasks.Type do
         []
       end
 
+    if Keyword.get(config, :debug, false) do
+      ExType.Debug.set()
+    end
+
     includes =
       Keyword.get(config, :include, ["lib/**/*.ex"])
       |> Enum.flat_map(fn glob -> Path.wildcard(Path.join(cwd, glob)) end)
