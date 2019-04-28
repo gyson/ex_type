@@ -303,7 +303,7 @@ defmodule ExType.Typespec do
   end
 
   def eval_type({:<<>>, _, _args}, _) do
-    Helper.todo()
+    Helper.throw("TODO: support binary type")
   end
 
   def eval_type([{:->, _, [inputs, output]}], context) when is_list(inputs) do
@@ -430,8 +430,8 @@ defmodule ExType.Typespec do
     eval_type([{:char, meta, []}], context)
   end
 
-  def eval_type({:nonempty_charlist, _meta, []}, _context) do
-    Helper.todo()
+  def eval_type({:nonempty_charlist, meta, []}, context) do
+    eval_type({:nonempty_list, meta, [{:char, meta, []}]}, context)
   end
 
   def eval_type({:fun, _, []}, _) do
@@ -474,12 +474,20 @@ defmodule ExType.Typespec do
     eval_type([{:any, meta, []}], context)
   end
 
+  def eval_type({:list, _meta, [arg]}, context) do
+    eval_type([arg], context)
+  end
+
   def eval_type({:maybe_improper_list, meta, [_type1, _type2]}, context) do
     # TODO: fix this
     eval_type([{:any, meta, []}], context)
   end
 
-  # TODO: nonempty_list
+  def eval_type({:nonempty_list, _, [arg]}, context) do
+    # TODO: fix this
+    eval_type([arg], context)
+  end
+
   # TODO: maybe_improper_list
   # TODO: nonempty_maybe_improper_list
   # TODO: mfa
@@ -519,7 +527,7 @@ defmodule ExType.Typespec do
         intersect_types(types)
 
       _ ->
-        Helper.todo("error message")
+        Helper.throw("invalid intersection type")
     end
   end
 
@@ -603,7 +611,7 @@ defmodule ExType.Typespec do
       context: context
     })
 
-    Helper.todo("cannot match eval_type")
+    Helper.throw("cannot match eval_type")
   end
 
   def fetch_specs(module, name, arity) do

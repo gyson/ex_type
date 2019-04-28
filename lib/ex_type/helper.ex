@@ -28,46 +28,6 @@ defmodule ExType.Helper do
     end
   end
 
-  defmacro pattern_error(pattern, type, context) do
-    quote do
-      {:error,
-       %ExType.Unification.PatternError{
-         pattern: unquote(pattern),
-         type: unquote(type),
-         context: unquote(context),
-         line: "#{__ENV__.file}:#{__ENV__.line}"
-       }}
-    end
-  end
-
-  defmacro guard_error(guard, context) do
-    quote do
-      {:error,
-       %ExType.Unification.GuardError{
-         guard: unquote(guard),
-         context: unquote(context),
-         line: "#{__ENV__.file}:#{__ENV__.line}"
-       }}
-    end
-  end
-
-  defmacro eval_error(code, context) do
-    quote do
-      {:error,
-       %ExType.Checker.EvalError{
-         code: unquote(code),
-         context: unquote(context),
-         line: "#{__ENV__.file}:#{__ENV__.line}"
-       }}
-    end
-  end
-
-  defmacro todo(message \\ "") do
-    quote do
-      raise "TODO #{unquote(message)} at #{__ENV__.file}:#{__ENV__.line}"
-    end
-  end
-
   defmacro throw(message) do
     quote do
       throw("#{unquote(message)} at #{__ENV__.file}:#{__ENV__.line}")
