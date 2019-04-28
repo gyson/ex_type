@@ -277,7 +277,19 @@ defmodule ExType.Checker do
 
         {_, result_type} = eval(new_context, right)
 
-        {result_type, acc_type}
+        case acc_type do
+          %Type.Union{types: types} ->
+            # TODO: need to take care of type guard
+            new_acc_type =
+              types
+              |> Enum.reject(fn type -> exact_pattern_match(left, type) end)
+              |> Typespec.union_types()
+
+            {result_type, new_acc_type}
+
+          _ ->
+            {result_type, acc_type}
+        end
       end)
       |> elem(0)
       |> Typespec.union_types()
@@ -458,5 +470,29 @@ defmodule ExType.Checker do
 
   def eval(_context, _code) do
     Helper.throw("unsupported expr")
+  end
+
+  def exact_pattern_match(atom, %Type.Atom{literal: true, value: atom}) when is_atom(atom) do
+    true
+  end
+
+  def exact_pattern_match({var, _, ctx}, _) when is_atom(var) and is_atom(ctx) do
+    true
+  end
+
+  def exact_pattern_match({first, second}, type) do
+    exact_pattern_match({:{}, [], [first, second]}, type)
+  end
+
+  def exact_pattern_match({:{}, _, args}, %Type.TypedTuple{types: types})
+      when length(args) == length(types) do
+    Enum.zip(args, types)
+    |> Enum.all?(fn {arg, type} ->
+      exact_pattern_match(arg, type)
+    end)
+  end
+
+  def exact_pattern_match(_pattern, _type) do
+    false
   end
 end
