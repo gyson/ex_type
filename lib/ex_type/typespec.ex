@@ -655,12 +655,16 @@ defmodule ExType.Typespec do
         result_types =
           specs
           |> Enum.flat_map(fn {inputs, output, _} ->
-            case match_typespec_list(inputs, input_types, %{}, fn x -> x end) do
-              {:ok, _, new_map} ->
-                [Typespecable.resolve_vars(output, new_map)]
+            try do
+              map =
+                Enum.zip(inputs, input_types)
+                |> Enum.reduce(%{}, fn {input, input_type}, acc_context ->
+                  match_typespec(acc_context, input, input_type)
+                end)
 
-              {:error, _} ->
-                []
+              [Typespecable.resolve_vars(output, map)]
+            catch
+              _ -> []
             end
           end)
 
@@ -682,50 +686,52 @@ defmodule ExType.Typespec do
     end
   end
 
-  def match_typespec(type, type, context) do
-    {:ok, type, context}
+  def match_typespec(map, type, type) do
+    map
   end
 
-  def match_typespec(%Type.Any{}, _, context) do
-    {:ok, %Type.Any{}, context}
+  def match_typespec(map, %Type.Any{}, _) do
+    map
   end
 
-  def match_typespec(typespec, %Type.Any{}, context) do
-    {:ok, typespec, context}
+  def match_typespec(map, _, %Type.Any{}) do
+    map
   end
 
-  def match_typespec(%Type.SpecVariable{type: constraint} = sv, type, context) do
+  def match_typespec(map, %Type.SpecVariable{type: constraint} = sv, type) do
     case constraint do
       %Type.Any{} ->
-        {:ok, type, Map.put(context, sv, type)}
+        Map.put(map, sv, type)
 
       _ ->
-        match_typespec(constraint, type, context)
+        match_typespec(map, constraint, type)
     end
   end
 
   def match_typespec(
+        map,
         %Type.TypedTuple{types: left_types},
-        %Type.TypedTuple{types: right_types},
-        context
-      ) do
-    match_typespec_list(left_types, right_types, context, fn types ->
-      %Type.TypedTuple{types: types}
+        %Type.TypedTuple{types: right_types}
+      )
+      when length(left_types) == length(right_types) do
+    Enum.zip(left_types, right_types)
+    |> Enum.reduce(map, fn {left_type, right_type}, acc_map ->
+      match_typespec(acc_map, left_type, right_type)
     end)
   end
 
-  def match_typespec(%Type.Atom{literal: false} = spec, %Type.Atom{}, context) do
-    {:ok, spec, context}
+  def match_typespec(map, %Type.Atom{literal: false}, %Type.Atom{}) do
+    map
   end
 
   def match_typespec(
+        map,
         %Type.TypedFunction{inputs: inputs, output: output},
-        %Type.RawFunction{args: args, body: body, context: fn_context},
-        context
+        %Type.RawFunction{args: args, body: body, context: fn_context}
       )
       when length(inputs) == length(args) do
     # need to resolve inputs ? then, make sure it's concrete type ?
-    resolved_inputs = Enum.map(inputs, &Typespecable.resolve_vars(&1, context))
+    resolved_inputs = Enum.map(inputs, &Typespecable.resolve_vars(&1, map))
 
     new_fn_context =
       Enum.zip(args, resolved_inputs)
@@ -735,130 +741,77 @@ defmodule ExType.Typespec do
 
     # TODO: type guards
 
-    try do
-      {_, result_type} = ExType.Checker.eval(new_fn_context, body)
+    {_, result_type} = ExType.Checker.eval(new_fn_context, body)
 
-      case match_typespec(output, result_type, context) do
-        {:ok, _, new_context} ->
-          {:ok, %Type.TypedFunction{inputs: resolved_inputs, output: result_type}, new_context}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    catch
-      error -> {:error, error}
-    end
+    match_typespec(map, output, result_type)
   end
 
-  def match_typespec(%Type.Protocol{module: module}, type, context) do
+  def match_typespec(map, %Type.Protocol{module: module}, type) do
     {:ok, name} = Typespecable.get_protocol_path(type)
 
     mod = Module.concat([module, name])
 
     case Code.ensure_compiled?(mod) do
       true ->
-        {:ok, type, context}
+        map
     end
   end
 
-  def match_typespec(%Type.GenericProtocol{module: module, generic: generic}, type, context) do
+  def match_typespec(map, %Type.GenericProtocol{module: module, generic: generic}, type) do
     {:ok, name} = Typespecable.get_protocol_path(type)
 
     mod = Module.concat([module, name])
 
     case eval_spec(mod, :ex_type_impl, [type]) do
       {:ok, output} ->
-        # Helper.inspect {generic, output}
-        match_typespec(generic, output, context)
+        match_typespec(map, generic, output)
 
       {:error, error} ->
-        {:error, error}
+        Helper.throw(error)
     end
   end
 
-  def match_typespec(%Type.List{type: left_type}, %Type.List{type: right_type}, context) do
-    case match_typespec(left_type, right_type, context) do
-      {:ok, result_type, context} ->
-        {:ok, %Type.List{type: result_type}, context}
-
-      {:error, error} ->
-        {:error, error}
-    end
+  def match_typespec(map, %Type.List{type: left_type}, %Type.List{type: right_type}) do
+    match_typespec(map, left_type, right_type)
   end
 
   def match_typespec(
+        map,
         %Type.Map{key: left_key_type, value: left_value_type},
-        %Type.Map{key: right_key_type, value: right_value_type},
-        context
+        %Type.Map{key: right_key_type, value: right_value_type}
       ) do
-    match_typespec_list(
-      [left_key_type, left_value_type],
-      [right_key_type, right_value_type],
-      context,
-      fn [key, value] ->
-        %Type.Map{key: key, value: value}
-      end
-    )
-  end
-
-  def match_typespec(%Type.Union{types: union_types}, type, context) do
-    # match spec with each type of it
-    Enum.reduce_while(union_types, {:error, "not match with union"}, fn union_type, acc ->
-      case match_typespec(union_type, type, context) do
-        {:ok, _, context} ->
-          {:halt, {:ok, type, context}}
-
-        {:error, _} ->
-          {:cont, acc}
-      end
-    end)
+    map
+    |> match_typespec(left_key_type, right_key_type)
+    |> match_typespec(left_value_type, right_value_type)
   end
 
   # when right type is union, we need to make sure all types matches
-  def match_typespec(typespec, %Type.Union{types: union_types}, context) do
-    # match spec with each type of it
-    Enum.reduce_while(union_types, {:ok, typespec, context}, fn union_type, acc ->
-      case match_typespec(typespec, union_type, context) do
-        {:ok, _, _} ->
-          {:cont, acc}
-
-        {:error, error} ->
-          {:halt, {:error, error}}
-      end
+  def match_typespec(map, typespec, %Type.Union{types: union_types}) do
+    Enum.reduce(union_types, map, fn type, acc_map ->
+      match_typespec(acc_map, typespec, type)
     end)
   end
 
-  def match_typespec(%Type.AnyTuple{} = typespec, %Type.TypedTuple{}, context) do
-    {:ok, typespec, context}
-  end
-
-  def match_typespec(typespec, type, context) do
-    {:error, {"not match_typespec", typespec, type, context}}
-  end
-
-  def match_typespec_list(left_types, right_types, context, wrap)
-      when length(left_types) == length(right_types) do
-    Enum.zip(left_types, right_types)
-    |> Enum.reduce_while({:ok, [], context}, fn {left_type, right_type},
-                                                {:ok, reversed_types, acc_context} ->
-      case match_typespec(left_type, right_type, acc_context) do
-        {:ok, result_type, acc_context} ->
-          {:cont, {:ok, [result_type | reversed_types], acc_context}}
-
-        {:error, error} ->
-          {:halt, {:error, error}}
+  def match_typespec(map, %Type.Union{types: union_types}, type) do
+    union_types
+    |> Enum.reduce({map, 0}, fn union_type, {acc_map, count} ->
+      try do
+        {match_typespec(map, union_type, type), count + 1}
+      catch
+        _ -> {acc_map, count}
       end
     end)
     |> case do
-      {:ok, reversed_types, context} ->
-        {:ok, wrap.(Enum.reverse(reversed_types)), context}
-
-      other ->
-        other
+      {_, 0} -> Helper.throw("not match with union")
+      {map, _} -> map
     end
   end
 
-  def match_typespec_list(_left_types, _right_types, _context, _) do
-    {:error, "length not match"}
+  def match_typespec(map, %Type.AnyTuple{}, %Type.TypedTuple{}) do
+    map
+  end
+
+  def match_typespec(_map, _typespec, _type) do
+    Helper.throw("not match typespec")
   end
 end

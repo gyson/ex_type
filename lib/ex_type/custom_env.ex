@@ -136,11 +136,11 @@ defmodule ExType.CustomEnv do
 
         path_name = "#{Macro.to_string(module)}.#{name}/#{length(args)}"
 
-        case Typespec.match_typespec(fn_typespec, raw_fn, map) do
-          {:ok, _type, _} ->
-            IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
-
-          {:error, _error} ->
+        try do
+          Typespec.match_typespec(map, fn_typespec, raw_fn)
+          IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
+        catch
+          _error ->
             IO.puts("#{Emoji.one_test_fail()}  #{path_name}")
         end
     end

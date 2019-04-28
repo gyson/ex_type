@@ -334,11 +334,11 @@ defmodule ExType.Checker do
           id: :erlang.unique_integer()
         }
 
-        {:ok, _, map} =
+        map =
           Typespec.match_typespec(
+            %{},
             %Type.GenericProtocol{module: Enumerable, generic: generic},
-            right_type,
-            %{}
+            right_type
           )
 
         generic_type = Map.fetch!(map, generic)
