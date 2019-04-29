@@ -31,7 +31,15 @@ defmodule ExType.Unification do
       end)
 
     if Enum.empty?(scopes) do
-      Helper.throw("not match union type")
+      Helper.throw(
+        message: "not match union type",
+        context: context,
+        meta:
+          case pattern do
+            {_, meta, _} -> meta
+            _ -> []
+          end
+      )
     end
 
     final_scope =
@@ -139,8 +147,16 @@ defmodule ExType.Unification do
     |> unify_pattern(right, value)
   end
 
-  def unify_pattern(_context, _pattern, _type) do
-    Helper.throw("unsupported pattern")
+  def unify_pattern(context, pattern, _type) do
+    Helper.throw(
+      message: "unsupported pattern: #{Macro.to_string(pattern)}",
+      context: context,
+      meta:
+        case pattern do
+          {_, meta, _} -> meta
+          _ -> []
+        end
+    )
   end
 
   @spec unify_guard(Context.t(), any()) :: Context.t()
@@ -182,7 +198,15 @@ defmodule ExType.Unification do
     |> unify_guard(right)
   end
 
-  def unify_guard(_context, _guard) do
-    Helper.throw("unsupport guard")
+  def unify_guard(context, guard) do
+    Helper.throw(
+      message: "unsupport guard: #{Macro.to_string(guard)}",
+      context: context,
+      meta:
+        case guard do
+          {_, meta, _} when is_list(meta) -> meta
+          _ -> []
+        end
+    )
   end
 end

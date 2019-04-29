@@ -28,9 +28,28 @@ defmodule ExType.Helper do
     end
   end
 
-  defmacro throw(message) do
-    quote do
-      throw("#{unquote(message)} at #{__ENV__.file}:#{__ENV__.line}")
+  defmacro throw(options) do
+    quote bind_quoted: [options: options] do
+      file =
+        case Keyword.fetch(options, :context) do
+          {:ok, context} -> context.env.file
+          :error -> "unknown_file"
+        end
+
+      line =
+        with {:ok, meta} <- Keyword.fetch(options, :meta),
+             {:ok, line} <- Keyword.fetch(meta, :line) do
+          line
+        else
+          :error -> "?"
+        end
+
+      throw(%{
+        message: Keyword.get(options, :message, "unknown message"),
+        location: "#{file}:#{line}",
+        debug_location: "#{__ENV__.file}:#{__ENV__.line}",
+        unmatch: Keyword.get(options, :unmatch, false)
+      })
     end
   end
 

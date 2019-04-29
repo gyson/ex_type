@@ -136,11 +136,11 @@ defmodule ExType.Typespec do
             {:ok, result}
 
           _ ->
-            {:error, "cannot find beam spec for #{module}, #{name}, #{arity}"}
+            {:error, "cannot find beam spec for #{Macro.to_string(module)}.#{name}/#{arity}"}
         end
 
       :error ->
-        {:error, "cannot find beam spec for #{module}"}
+        {:error, "cannot find beam spec for #{Macro.to_string(module)}"}
     end
   end
 
@@ -302,8 +302,11 @@ defmodule ExType.Typespec do
     %Type.Atom{literal: true, value: atom}
   end
 
-  def eval_type({:<<>>, _, _args}, _) do
-    Helper.throw("TODO: support binary type")
+  def eval_type({:<<>>, meta, _args}, _) do
+    Helper.throw(
+      message: "TODO: support binary type",
+      meta: meta
+    )
   end
 
   def eval_type([{:->, _, [inputs, output]}], context) when is_list(inputs) do
@@ -521,13 +524,16 @@ defmodule ExType.Typespec do
   # Remote types
 
   # T.&({type_1, type_2})
-  def eval_type({{:., _, [T, :&]}, _, [tuple_type]}, context) do
+  def eval_type({{:., meta, [T, :&]}, _, [tuple_type]}, context) do
     case eval_type(tuple_type, context) do
       %Type.TypedTuple{types: types} ->
         intersect_types(types)
 
       _ ->
-        Helper.throw("invalid intersection type")
+        Helper.throw(
+          message: "invalid intersection type",
+          meta: meta
+        )
     end
   end
 
@@ -604,14 +610,17 @@ defmodule ExType.Typespec do
     end
   end
 
-  def eval_type(type, context) do
+  def eval_type({_, meta, _} = type, context) do
     Helper.inspect(%{
       error: :eval_type,
       type: type,
       context: context
     })
 
-    Helper.throw("cannot match eval_type")
+    Helper.throw(
+      message: "cannot match eval_type",
+      meta: meta
+    )
   end
 
   def fetch_specs(module, name, arity) do
@@ -664,7 +673,14 @@ defmodule ExType.Typespec do
 
               [Typespecable.resolve_vars(output, map)]
             catch
-              _ -> []
+              error ->
+                # `unmatch` case could happen regularly.
+                if error.unmatch do
+                  []
+                else
+                  # this is actual type error, rethrow it
+                  throw(error)
+                end
             end
           end)
 
@@ -676,7 +692,7 @@ defmodule ExType.Typespec do
               )
             end
 
-          {:error, "spec not match for #{Macro.to_string(expr)}"}
+          {:error, Macro.to_string(expr)}
         else
           {:ok, union_types(result_types)}
         end
@@ -766,8 +782,8 @@ defmodule ExType.Typespec do
       {:ok, output} ->
         match_typespec(map, generic, output)
 
-      {:error, error} ->
-        Helper.throw(error)
+      {:error, message} ->
+        Helper.throw(message: message)
     end
   end
 
@@ -802,7 +818,7 @@ defmodule ExType.Typespec do
       end
     end)
     |> case do
-      {_, 0} -> Helper.throw("not match with union")
+      {_, 0} -> Helper.throw(message: "not match with union")
       {map, _} -> map
     end
   end
@@ -811,7 +827,20 @@ defmodule ExType.Typespec do
     map
   end
 
-  def match_typespec(_map, _typespec, _type) do
-    Helper.throw("not match typespec")
+  def match_typespec(_map, typespec, type) do
+    typespec_string =
+      typespec
+      |> Typespecable.to_quote()
+      |> Macro.to_string()
+
+    type_string =
+      type
+      |> Typespecable.to_quote()
+      |> Macro.to_string()
+
+    Helper.throw(
+      message: "unsupported match_typespec(map, #{typespec_string}, #{type_string})",
+      unmatch: true
+    )
   end
 end

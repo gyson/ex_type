@@ -141,10 +141,18 @@ defmodule ExType.CustomEnv do
           IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
         catch
           error ->
-            IO.puts("#{Emoji.one_test_fail()}  #{path_name}")
+            IO.puts("""
+            #{Emoji.one_test_fail()}  #{path_name}
+               |
+               | #{error.message}
+               |
+               | at #{error.location}
+            """)
 
             if ExType.Debug.enabled?() do
-              IO.inspect(error, label: "   #{Emoji.error()}  ")
+              IO.puts("""
+                 * debug at #{error.debug_location}
+              """)
             end
         end
     end

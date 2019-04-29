@@ -33,9 +33,13 @@ defmodule ExType.Checker do
     {context, %Type.BitString{}}
   end
 
-  def eval(context, {:%, _, [struct, {:%{}, _, args}]}) do
+  def eval(context, {:%, meta, [struct, {:%{}, _, args}]}) do
     if not Helper.is_struct(struct) do
-      Helper.throw("#{struct} is not struct")
+      Helper.throw(
+        message: "#{struct} is not struct",
+        context: context,
+        meta: meta
+      )
     end
 
     types =
@@ -136,7 +140,11 @@ defmodule ExType.Checker do
         result
 
       _ ->
-        Helper.throw("T.inspect bad argument error")
+        Helper.throw(
+          message: "Only support T.inspect/1 at the moment",
+          context: context,
+          meta: meta
+        )
     end
   end
 
@@ -154,12 +162,14 @@ defmodule ExType.Checker do
         if type_left == type_right do
           eval(context, nil)
         else
-          location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
           left_string = type_left |> ExType.Typespecable.to_quote() |> Macro.to_string()
           right_string = type_right |> ExType.Typespecable.to_quote() |> Macro.to_string()
-          IO.puts("#{Emoji.error()}  T.assert #{left_string} != #{right_string} at #{location}")
 
-          Helper.throw("T.assert failed")
+          Helper.throw(
+            message: "T.assert(#{left_string} == #{right_string})",
+            context: context,
+            meta: meta
+          )
         end
 
       ::: ->
@@ -198,8 +208,6 @@ defmodule ExType.Checker do
             eval(context, expr)
 
           true ->
-            location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
-
             type_error =
               quote do
                 unquote(module).unquote(name)(
@@ -212,11 +220,20 @@ defmodule ExType.Checker do
               end
               |> Macro.to_string()
 
-            Helper.throw("#{Emoji.error()}  Type Error `#{type_error}` at #{location}")
+            Helper.throw(
+              message: "Type Error `#{type_error}`",
+              context: context,
+              meta: meta
+            )
         end
 
-      {:error, error} ->
-        Helper.throw(error)
+      {:error, message} ->
+        Helper.throw(
+          message:
+            "type error for #{Macro.to_string(module)}.#{name}/#{length(args)} with #{message}",
+          context: context,
+          meta: meta
+        )
     end
   end
 
@@ -415,7 +432,11 @@ defmodule ExType.Checker do
               end)
 
             if has_recursive_call? do
-              Helper.throw("recurisive call with #{fn_name}/#{fn_arity}")
+              Helper.throw(
+                message: "recurisive call with #{fn_name}/#{fn_arity}",
+                context: context,
+                meta: meta
+              )
             end
 
             fn_context =
@@ -446,16 +467,24 @@ defmodule ExType.Checker do
                 )
 
               nil ->
-                Helper.throw("unknown code")
+                Helper.throw(
+                  message: "unknown call #{name}/#{length(args)}",
+                  context: context,
+                  meta: meta
+                )
             end
         end
 
-      {:error, error} ->
-        Helper.throw(error)
+      {:error, message} ->
+        Helper.throw(
+          message: message,
+          context: context,
+          meta: meta
+        )
     end
   end
 
-  def eval(context, {{:., _, [left, right]}, _, []}) when is_atom(right) do
+  def eval(context, {{:., meta, [left, right]}, _, []}) when is_atom(right) do
     case eval(context, left) do
       {_, %Type.StructLikeMap{types: types}} ->
         case Map.fetch(types, right) do
@@ -463,13 +492,21 @@ defmodule ExType.Checker do
             {context, type}
 
           :error ->
-            Helper.throw("invalid field #{right}")
+            Helper.throw(
+              messate: "field `#{right}` does not exist",
+              context: context,
+              meta: meta
+            )
         end
     end
   end
 
-  def eval(_context, _code) do
-    Helper.throw("unsupported expr")
+  def eval(context, {_, meta, _} = code) do
+    Helper.throw(
+      message: "unsupported code: #{Macro.to_string(code)}",
+      context: context,
+      meta: meta
+    )
   end
 
   def exact_pattern_match(atom, %Type.Atom{literal: true, value: atom}) when is_atom(atom) do
