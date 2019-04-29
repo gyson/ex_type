@@ -188,6 +188,20 @@ defimpl Typespecable, for: Type.Reference do
   def get_protocol_path(_), do: {:ok, Reference}
 end
 
+defimpl Typespecable, for: Type.PID do
+  def to_quote(%Type.PID{}) do
+    quote do
+      pid()
+    end
+  end
+
+  def resolve_vars(type, _) do
+    type
+  end
+
+  def get_protocol_path(_), do: {:ok, PID}
+end
+
 defimpl Typespecable, for: Type.AnyFunction do
   def to_quote(%Type.AnyFunction{}) do
     quote do
@@ -270,6 +284,20 @@ defimpl Typespecable, for: Type.Map do
   end
 
   def get_protocol_path(_), do: {:ok, Map}
+end
+
+defimpl Typespecable, for: Type.AnyTuple do
+  def to_quote(%Type.AnyTuple{}) do
+    quote do
+      tuple()
+    end
+  end
+
+  def resolve_vars(type, _) do
+    type
+  end
+
+  def get_protocol_path(_), do: {:ok, Tuple}
 end
 
 defimpl Typespecable, for: Type.TypedTuple do
