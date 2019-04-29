@@ -63,9 +63,23 @@ This project is still in very early stage with active development. You are likel
 uncovered case when playing more complex code beyond example. Be free to submit github
 issue for bug report or any feedback.
 
+## Roadmap
+
+Plan to apply ExType to following small-sized libraries first:
+
+- [ ] [Ane](https://github.com/gyson/ane)
+- [ ] [Sortable](https://github.com/gyson/sortable)
+- [ ] [Blex](https://github.com/gyson/blex)
+- [ ] [HLL](https://github.com/gyson/hll)
+- [ ] [ExType](https://github.com/gyson/ex_type) (probably most challenge one)
+
 ## Development Note
 
 - Use `MIX_ENV=test iex -S mix` to access test context.
+
+- It uses serveral Elixir private APIs. It should be ok for now because `ex_type` is
+  a development dependency, not a runtime dependency. Would like to reduce private API
+  usage at later time when the project is more mature.
 
 ## License
 
