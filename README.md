@@ -67,7 +67,7 @@ issue for bug report or any feedback.
 
 Plan to apply ExType to following small-sized libraries first:
 
-- [ ] [Ane](https://github.com/gyson/ane)
+- [x] [Ane](https://github.com/gyson/ane) ([done](https://github.com/gyson/ane/pull/1))
 - [ ] [Sortable](https://github.com/gyson/sortable)
 - [ ] [Blex](https://github.com/gyson/blex)
 - [ ] [HLL](https://github.com/gyson/hll)
