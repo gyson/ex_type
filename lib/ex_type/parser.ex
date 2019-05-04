@@ -1,12 +1,13 @@
 defmodule ExType.Parser do
-  # TODO: support macro in call and guard
+  @moduledoc false
 
   def expand_call({:when, _, [{name, _, args}, guard]}) do
     {name, args, guard}
   end
 
   def expand_call({name, _, args}) do
-    {name, args, nil}
+    # `true` guard is the same as no guard
+    {name, args, true}
   end
 
   # return {name, args, guard, block}
@@ -35,7 +36,28 @@ defmodule ExType.Parser do
       |> Map.put(:function, {name, length(args)})
       |> Map.put(:current_vars, current_vars)
 
-    body =
+    expanded_args =
+      Enum.map(args, fn arg ->
+        arg
+        |> Macro.postwalk(fn
+          # avoid underscore variable warning
+          {name, meta, ctx} = code when is_atom(name) and is_atom(ctx) ->
+            if String.at(Atom.to_string(name), 0) == "_" do
+              {name, Keyword.put(meta, :generated, true), ctx}
+            else
+              code
+            end
+
+          code ->
+            code
+        end)
+        |> :elixir_expand.expand(updated_env)
+        |> elem(0)
+      end)
+
+    expanded_guard = guard |> :elixir_expand.expand(updated_env) |> elem(0)
+
+    expanded_body =
       block
       |> Macro.postwalk(fn
         # support T.inspect
@@ -56,6 +78,6 @@ defmodule ExType.Parser do
       |> :elixir_expand.expand(updated_env)
       |> elem(0)
 
-    {name, args, guard, body}
+    {name, expanded_args, expanded_guard, expanded_body}
   end
 end

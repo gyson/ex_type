@@ -1,4 +1,6 @@
 defmodule ExType.Debug do
+  @moduledoc false
+
   def set() do
     :persistent_term.put(ExType.Debug, true)
   end

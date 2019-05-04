@@ -27,6 +27,7 @@ deftypespec :erlang do
   @spec unquote(:>)(any(), any()) :: boolean()
   @spec unquote(:<)(any(), any()) :: boolean()
   @spec unquote(:==)(any(), any()) :: boolean()
+  @spec unquote(:"=:=")(any(), any()) :: boolean()
 
   @spec binary_to_term(binary()) :: any()
 

@@ -164,6 +164,25 @@ defmodule ExType.Typespec do
       other ->
         [other]
     end)
+    |> Enum.group_by(fn
+      %Type.List{} -> :list
+      _ -> :others
+    end)
+    |> Enum.flat_map(fn
+      # TODO: support other container types
+      {:list, list} ->
+        [
+          %Type.List{
+            type:
+              list
+              |> Enum.map(fn %Type.List{type: type} -> type end)
+              |> union_types()
+          }
+        ]
+
+      {:others, others} ->
+        others
+    end)
     |> Enum.uniq()
     |> case do
       [one] ->
@@ -177,25 +196,6 @@ defmodule ExType.Typespec do
             types:
               multi
               |> Enum.reject(fn x -> x == %Type.None{} end)
-              # TODO: support other container types, use group by
-              |> Enum.split_with(fn
-                %Type.List{} -> true
-                _ -> false
-              end)
-              |> case do
-                {multi_list, rest} when length(multi_list) > 1 ->
-                  new_list = %Type.List{
-                    type:
-                      multi_list
-                      |> Enum.map(fn %Type.List{type: type} -> type end)
-                      |> union_types()
-                  }
-
-                  [new_list | rest]
-
-                {multi_list, rest} ->
-                  multi_list ++ rest
-              end
               |> Enum.sort()
           }
         end
@@ -808,7 +808,7 @@ defmodule ExType.Typespec do
     end)
   end
 
-  def match_typespec(map, %Type.Union{types: union_types}, type) do
+  def match_typespec(map, %Type.Union{types: union_types} = union, type) do
     union_types
     |> Enum.reduce({map, 0}, fn union_type, {acc_map, count} ->
       try do
@@ -818,8 +818,13 @@ defmodule ExType.Typespec do
       end
     end)
     |> case do
-      {_, 0} -> Helper.throw(message: "not match with union")
-      {map, _} -> map
+      {_, 0} ->
+        type_string = type |> Typespecable.to_quote() |> Macro.to_string()
+        union_string = union |> Typespecable.to_quote() |> Macro.to_string()
+        Helper.throw(message: "type `#{type_string}` not match with union type `#{union_string}`")
+
+      {map, _} ->
+        map
     end
   end
 

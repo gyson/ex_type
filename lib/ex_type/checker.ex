@@ -421,36 +421,43 @@ defmodule ExType.Checker do
 
       {:error, :not_found} ->
         case Map.fetch(context.functions, {name, arity}) do
-          {:ok, {fn_call, fn_block, fn_env}} ->
-            {fn_name, fn_args, _, fn_body} = Parser.expand(fn_call, fn_block, fn_env)
-            fn_arity = length(fn_args)
+          {:ok, fns} ->
+            result_type =
+              fns
+              |> Enum.map(fn {fn_call, fn_block, fn_env} ->
+                {fn_name, fn_args, fn_guard, fn_body} = Parser.expand(fn_call, fn_block, fn_env)
+                fn_arity = length(fn_args)
 
-            # detect recursive function without typespec
-            has_recursive_call? =
-              Enum.any?(context.stacks, fn {name, arity} ->
-                fn_name == name and fn_arity == arity
+                # detect recursive function without typespec
+                has_recursive_call? =
+                  Enum.any?(context.stacks, fn {name, arity} ->
+                    fn_name == name and fn_arity == arity
+                  end)
+
+                if has_recursive_call? do
+                  Helper.throw(
+                    message: "recurisive call with #{fn_name}/#{fn_arity}",
+                    context: context,
+                    meta: meta
+                  )
+                end
+
+                fn_context =
+                  context
+                  |> Context.replace_env(fn_env)
+                  |> Context.append_stack(fn_name, length(fn_args))
+
+                fn_context =
+                  Enum.zip(fn_args, args_types)
+                  |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
+                    Unification.unify_pattern(acc_context, arg, type)
+                  end)
+                  |> Unification.unify_guard(fn_guard)
+
+                eval(fn_context, fn_body)
+                |> elem(1)
               end)
-
-            if has_recursive_call? do
-              Helper.throw(
-                message: "recurisive call with #{fn_name}/#{fn_arity}",
-                context: context,
-                meta: meta
-              )
-            end
-
-            fn_context =
-              context
-              |> Context.replace_env(fn_env)
-              |> Context.append_stack(fn_name, length(fn_args))
-
-            fn_context =
-              Enum.zip(fn_args, args_types)
-              |> Enum.reduce(fn_context, fn {arg, type}, acc_context ->
-                Unification.unify_pattern(acc_context, arg, type)
-              end)
-
-            {_, result_type} = eval(fn_context, fn_body)
+              |> Typespec.union_types()
 
             {context, result_type}
 

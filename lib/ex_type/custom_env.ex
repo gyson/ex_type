@@ -116,7 +116,7 @@ defmodule ExType.CustomEnv do
 
         {{fn_name, length(fn_args)}, {fn_call, fn_body, caller_env}}
       end)
-      |> Enum.into(%{})
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
     context =
       %Context{

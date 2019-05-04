@@ -147,6 +147,27 @@ defmodule ExType.Unification do
     |> unify_pattern(right, value)
   end
 
+  def unify_pattern(context, {:<<>>, _, args}, %Type.BitString{}) do
+    Enum.reduce(args, context, fn
+      {:::, _, [{var, _, ctx}, {:-, _, [{:integer, _, []}, {:size, _, [size]}]}]}, acc
+      when is_atom(var) and is_atom(ctx) and is_integer(size) ->
+        Context.update_scope(acc, var, %Type.Integer{})
+
+      {:::, _, [int, {:integer, _, []}]}, acc when is_integer(int) ->
+        acc
+
+      {:::, _, [{var, _, ctx}, {:float, _, []}]}, acc when is_atom(var) and is_atom(ctx) ->
+        Context.update_scope(acc, var, %Type.Float{})
+
+      {:::, _, [{var, _, ctx}, {:bitstring, _, []}]}, acc when is_atom(var) and is_atom(ctx) ->
+        Context.update_scope(acc, var, %Type.BitString{})
+
+      {:::, _, [{var, _, ctx}, {:-, _, [{:bitstring, _, []}, {:size, _, [size]}]}]}, acc
+      when is_atom(var) and is_atom(ctx) and is_integer(size) ->
+        Context.update_scope(acc, var, %Type.BitString{})
+    end)
+  end
+
   def unify_pattern(context, pattern, _type) do
     Helper.throw(
       message: "unsupported pattern: #{Macro.to_string(pattern)}",
@@ -196,6 +217,10 @@ defmodule ExType.Unification do
     context
     |> unify_guard(left)
     |> unify_guard(right)
+  end
+
+  def unify_guard(context, true) do
+    context
   end
 
   def unify_guard(context, guard) do
