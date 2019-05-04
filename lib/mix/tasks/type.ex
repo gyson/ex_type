@@ -26,6 +26,7 @@ defmodule Mix.Tasks.Type do
   end
 
   defp prepare() do
+    Mix.Task.run("compile", [])
     Mix.Task.run("loadpaths", [])
   end
 
