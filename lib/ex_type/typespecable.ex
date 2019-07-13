@@ -217,8 +217,8 @@ defimpl Typespecable, for: Type.AnyFunction do
 end
 
 defimpl Typespecable, for: Type.RawFunction do
-  def to_quote(%Type.RawFunction{clauses: [{args, _, _} | _]}) do
-    quoted_anys = List.duplicate(quote(do: any()), length(args))
+  def to_quote(%Type.RawFunction{arity: arity}) do
+    quoted_anys = List.duplicate(quote(do: any()), arity)
 
     quote do
       unquote_splicing(quoted_anys) -> any()
