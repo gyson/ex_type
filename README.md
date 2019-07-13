@@ -69,7 +69,7 @@ Plan to apply ExType to following small-sized libraries first:
 
 - [x] [Ane](https://github.com/gyson/ane) ([done](https://github.com/gyson/ane/pull/1))
 - [x] [Sortable](https://github.com/gyson/sortable) ([done](https://github.com/gyson/sortable/pull/1))
-- [ ] [Blex](https://github.com/gyson/blex)
+- [x] [Blex](https://github.com/gyson/blex) ([done](https://github.com/gyson/blex/pull/2))
 - [ ] [HLL](https://github.com/gyson/hll)
 - [ ] [ExType](https://github.com/gyson/ex_type) (probably most challenge one)
 
