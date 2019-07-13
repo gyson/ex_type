@@ -50,7 +50,7 @@ defmodule ExType.Example.Foo do
       a + b
     end)
     |> Enum.flat_map(fn k ->
-      [k, k]
+        [k, k]
     end)
     |> Enum.reduce(1, fn x, y ->
       x + y
@@ -144,8 +144,8 @@ defmodule ExType.Example.Foo do
 
   def type_guard_case(x, y, z) do
     case {x, y, z} do
-      {x, y, z} when is_integer(x) and is_float(y) and is_atom(z) ->
-        {x, y, z}
+      {a, b, c} when is_integer(a) and is_float(b) and is_atom(c) ->
+        {a, b, c}
     end
   end
 
@@ -165,6 +165,12 @@ defmodule ExType.Example.Foo do
       hi: "yes",
       ok: 123
     }
+  end
+
+  @spec destruct(ExType.Example.Foo.StructExample.t()) :: {binary(), integer()}
+
+  def destruct(%ExType.Example.Foo.StructExample{hi: hi, ok: ok} = _f) do
+    T.inspect({hi, ok})
   end
 
   @spec none_example() :: none()

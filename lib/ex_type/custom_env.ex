@@ -26,23 +26,23 @@ defmodule ExType.CustomEnv do
       (defs ++ defps)
       # support "mix type" with filter
       |> Enum.map(fn
-        {{:when, _, [{name, meta, args}, _guards]}, block} ->
-          {{name, meta, args}, block}
+        {{:when, _, [{name, _meta, args}, _guards]} = call, block} ->
+          {call, block, name, length(args)}
 
-        other ->
-          other
+        {{name, _meta, args} = call, block} ->
+          {call, block, name, length(args)}
       end)
-      |> Enum.filter(fn {{name, _, args}, _} ->
-        filter.({module, name, length(args)})
+      |> Enum.filter(fn {_, _, name, arity} ->
+        filter.({module, name, arity})
       end)
-      |> Enum.filter(fn {{name, _, args}, _} ->
-        case ExType.Typespec.from_beam_spec(module, name, length(args)) do
+      |> Enum.filter(fn {_, _, name, arity} ->
+        case ExType.Typespec.from_beam_spec(module, name, arity) do
           {:ok, _} -> true
           {:error, _} -> false
         end
       end)
       # |> Helper.inspect
-      |> Enum.map(fn {call, block} ->
+      |> Enum.map(fn {call, block, _, _} ->
         ExType.CustomEnv.process_defs(call, block, env, defps)
       end)
 
@@ -104,7 +104,7 @@ defmodule ExType.CustomEnv do
   end
 
   def process_defs(call, block, caller_env, defps) do
-    {name, args, _guard, body} = Parser.expand(call, block, caller_env)
+    {name, args, guard, body} = Parser.expand(call, block, caller_env)
 
     module = Helper.get_module(caller_env.module)
 
@@ -125,7 +125,11 @@ defmodule ExType.CustomEnv do
       }
       |> Context.append_stack(name, length(args))
 
-    raw_fn = %Type.RawFunction{args: args, body: body, context: context}
+    raw_fn = %Type.RawFunction{
+      arity: length(args),
+      clauses: [{args, guard, body}],
+      context: context
+    }
 
     case Typespec.fetch_specs(module, name, length(args)) do
       {:ok, [{inputs, output, map}]} ->

@@ -17,10 +17,10 @@ defmodule ExType.Typespec do
     defs =
       Macro.postwalk(block, [], fn code, acc ->
         case code do
-          {:@, _, [{:spec, _, [{:::, _, [{name, _, args}, _]}]}]} ->
+          {:@, _, [{:spec, _, [{:"::", _, [{name, _, args}, _]}]}]} ->
             {code, [{name, length(args)} | acc]}
 
-          {:@, _, [{:spec, _, [{:when, _, [{:::, _, [{name, _, args}, _]}, _]}]}]} ->
+          {:@, _, [{:spec, _, [{:when, _, [{:"::", _, [{name, _, args}, _]}, _]}]}]} ->
             {code, [{name, length(args)} | acc]}
 
           _ ->
@@ -71,7 +71,7 @@ defmodule ExType.Typespec do
             Code.Typespec.type_to_quoted(type)
           end)
           |> Enum.find(fn
-            {:::, _, [{^name, _, args}, _]} when is_list(args) ->
+            {:"::", _, [{^name, _, args}, _]} when is_list(args) ->
               arity == length(args)
 
             _ ->
@@ -82,7 +82,7 @@ defmodule ExType.Typespec do
           nil ->
             {:error, {:not_found_type, module, name, arity}}
 
-          {:::, _, [left, right]} ->
+          {:"::", _, [left, right]} ->
             {:ok, left, right}
         end
 
@@ -146,10 +146,10 @@ defmodule ExType.Typespec do
 
   def convert_beam_spec(spec) do
     case spec do
-      {:::, _, [{name, _, args}, result]} ->
+      {:"::", _, [{name, _, args}, result]} ->
         {name, args, result, []}
 
-      {:when, _, [{:::, _, [{name, _, args}, result]}, vars]} ->
+      {:when, _, [{:"::", _, [{name, _, args}, result]}, vars]} ->
         {name, args, result, vars}
     end
   end
@@ -565,7 +565,7 @@ defmodule ExType.Typespec do
     end
   end
 
-  def eval_type({:::, _, [_, right]}, context) do
+  def eval_type({:"::", _, [_, right]}, context) do
     eval_type(right, context)
   end
 
@@ -743,23 +743,29 @@ defmodule ExType.Typespec do
   def match_typespec(
         map,
         %Type.TypedFunction{inputs: inputs, output: output},
-        %Type.RawFunction{args: args, body: body, context: fn_context}
+        %Type.RawFunction{arity: arity, clauses: clauses, context: fn_context}
       )
-      when length(inputs) == length(args) do
+      when length(inputs) == arity do
     # need to resolve inputs ? then, make sure it's concrete type ?
     resolved_inputs = Enum.map(inputs, &Typespecable.resolve_vars(&1, map))
 
-    new_fn_context =
-      Enum.zip(args, resolved_inputs)
-      |> Enum.reduce(fn_context, fn {arg, resolved_input}, fn_context ->
-        ExType.Unification.unify_pattern(fn_context, arg, resolved_input)
+    final_result_type =
+      clauses
+      |> Enum.map(fn {args, guard, body} ->
+        new_fn_context =
+          Enum.zip(args, resolved_inputs)
+          |> Enum.reduce(fn_context, fn {arg, resolved_input}, fn_context ->
+            ExType.Unification.unify_pattern(fn_context, arg, resolved_input)
+          end)
+          |> ExType.Unification.unify_guard(guard)
+
+        {_, result_type} = ExType.Checker.eval(new_fn_context, body)
+
+        result_type
       end)
+      |> Typespec.union_types()
 
-    # TODO: type guards
-
-    {_, result_type} = ExType.Checker.eval(new_fn_context, body)
-
-    match_typespec(map, output, result_type)
+    match_typespec(map, output, final_result_type)
   end
 
   def match_typespec(map, %Type.Protocol{module: module}, type) do

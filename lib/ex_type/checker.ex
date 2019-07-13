@@ -34,6 +34,17 @@ defmodule ExType.Checker do
   end
 
   def eval(context, {:%, meta, [struct, {:%{}, _, args}]}) do
+    # remove Elixir.ExType.Module prefix for some struct
+    # TODO: handle it properly ?
+    struct =
+      case Module.split(struct) do
+        ["ExType", "Module" | rest] ->
+          Module.concat(rest)
+
+        _ ->
+          struct
+      end
+
     if not Helper.is_struct(struct) do
       Helper.throw(
         message: "#{struct} is not struct",
@@ -119,13 +130,45 @@ defmodule ExType.Checker do
 
     {_, f} = eval(context, name)
 
-    %Type.RawFunction{args: args, context: context, body: body} = f
+    case f do
+      %Type.RawFunction{context: context, clauses: clauses} ->
+        result_type =
+          Enum.map(clauses, fn {args, guard, body} ->
+            Enum.zip(args, args_values)
+            |> Enum.reduce(context, fn {{name, _, nil}, type}, acc_context ->
+              Context.update_scope(acc_context, name, type)
+            end)
+            |> ExType.Unification.unify_guard(guard)
+            |> eval(body)
+            |> elem(1)
+          end)
+          |> Typespec.union_types()
 
-    Enum.zip(args, args_values)
-    |> Enum.reduce(context, fn {{name, _, nil}, type}, acc_context ->
-      Context.update_scope(acc_context, name, type)
-    end)
-    |> eval(body)
+        {context, result_type}
+
+      # Union of raw function
+      %Type.Union{types: types} ->
+        result_type =
+          Enum.map(types, fn %Type.RawFunction{context: context, clauses: clauses} ->
+            Enum.map(clauses, fn {args, guard, body} ->
+              Enum.zip(args, args_values)
+              |> Enum.reduce(context, fn {{name, _, nil}, type}, acc_context ->
+                Context.update_scope(acc_context, name, type)
+              end)
+              |> ExType.Unification.unify_guard(guard)
+              |> eval(body)
+              |> elem(1)
+            end)
+            |> Typespec.union_types()
+          end)
+          |> Typespec.union_types()
+
+        {context, result_type}
+
+      %Type.TypedFunction{inputs: _inputs, output: output} ->
+        # TODO match inputs with args
+        {context, output}
+    end
   end
 
   # support T.inspect
@@ -172,7 +215,7 @@ defmodule ExType.Checker do
           )
         end
 
-      ::: ->
+      :"::" ->
         context
         |> Unification.unify_pattern(left, type_right)
         |> eval(nil)
@@ -221,7 +264,7 @@ defmodule ExType.Checker do
               |> Macro.to_string()
 
             Helper.throw(
-              message: "Type Error `#{type_error}`",
+              message: "Typespec not found: `#{type_error}`",
               context: context,
               meta: meta
             )
@@ -238,12 +281,24 @@ defmodule ExType.Checker do
   end
 
   # function
-  def eval(context, {:fn, _, [{:->, _, [args, body]}]}) do
+  def eval(context, {:fn, _, raw_clauses}) when is_list(raw_clauses) do
+    clauses =
+      Enum.map(raw_clauses, fn
+        {:->, _, [[{:when, _, when_args}], body]} ->
+          {args, [guard]} = Enum.split(when_args, -1)
+          {args, guard, body}
+
+        {:->, _, [args, body]} ->
+          {args, true, body}
+      end)
+
+    arity = clauses |> Enum.at(0) |> elem(0) |> length()
+
     # lazy eval
     {context,
      %Type.RawFunction{
-       args: args,
-       body: body,
+       arity: arity,
+       clauses: clauses,
        context: context
      }}
   end
@@ -493,7 +548,8 @@ defmodule ExType.Checker do
 
   def eval(context, {{:., meta, [left, right]}, _, []}) when is_atom(right) do
     case eval(context, left) do
-      {_, %Type.StructLikeMap{types: types}} ->
+      {_, %{__struct__: type_struct, types: types}}
+      when type_struct in [Type.StructLikeMap, Type.Struct] ->
         case Map.fetch(types, right) do
           {:ok, type} ->
             {context, type}

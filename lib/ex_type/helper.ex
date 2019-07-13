@@ -53,6 +53,20 @@ defmodule ExType.Helper do
     end
   end
 
+  def stacktrace() do
+    case Process.info(self(), :current_stacktrace) do
+      {:current_stacktrace, [{Process, :info, _, _}, {ExType.Helper, :stacktrace, _, _} | rest]} ->
+        rest
+        |> Enum.map(fn {mod_name, fun_name, arity, info} ->
+          file = Keyword.fetch!(info, :file)
+          line = Keyword.fetch!(info, :line)
+          "#{mod_name}.#{fun_name}/#{arity} at #{file}:#{line}"
+        end)
+        |> Enum.join("\n")
+        |> IO.puts()
+    end
+  end
+
   def is_protocol(module) do
     try do
       module.__protocol__(:module)
@@ -63,7 +77,7 @@ defmodule ExType.Helper do
     end
   end
 
-  def is_struct(module) do
+  def is_struct(module) when is_atom(module) do
     try do
       module.__struct__()
       true

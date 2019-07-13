@@ -142,12 +142,12 @@ defmodule ExType.Type do
     @moduledoc false
 
     @type t :: %__MODULE__{
-            args: [any()],
-            body: any(),
+            arity: integer(),
+            clauses: [{[any()], any(), any()}],
             context: ExType.Context.t()
           }
 
-    defstruct [:args, :body, :context]
+    defstruct [:arity, :clauses, :context]
   end
 
   defmodule TypedFunction do

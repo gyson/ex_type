@@ -28,10 +28,27 @@ deftypespec :erlang do
   @spec unquote(:<)(any(), any()) :: boolean()
   @spec unquote(:==)(any(), any()) :: boolean()
   @spec unquote(:"=:=")(any(), any()) :: boolean()
+  @spec unquote(:"=<")(any(), any()) :: boolean()
+  @spec unquote(:>=)(any(), any()) :: boolean()
+  @spec unquote(:"/=")(any(), any()) :: boolean()
 
   @spec binary_to_term(binary()) :: any()
 
   @spec error(any()) :: no_return()
 
   @spec error(any(), [any()]) :: no_return()
+
+  @spec bsl(integer(), integer()) :: integer()
+
+  @spec bor(integer(), integer()) :: integer()
+
+  @spec band(integer(), integer()) :: integer()
+
+  @spec div(integer(), integer()) :: integer()
+
+  @spec rem(integer(), integer()) :: integer()
+
+  @spec phash2(any(), integer()) :: integer()
+
+  @spec max(first, second) :: first | second when first: any(), second: any()
 end

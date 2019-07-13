@@ -1,6 +1,8 @@
 defmodule ExType.Parser do
   @moduledoc false
 
+  use ExType.Helper
+
   def expand_call({:when, _, [{name, _, args}, guard]}) do
     {name, args, guard}
   end
@@ -36,6 +38,12 @@ defmodule ExType.Parser do
       |> Map.put(:function, {name, length(args)})
       |> Map.put(:current_vars, current_vars)
 
+    # ???
+    # https://github.com/elixir-lang/elixir/blob/f2dd45025f6fedcb5749d63c19853a751e354a21/lib/elixir/src/elixir_expand.erl#L11
+    matched_env = updated_env |> Map.put(:context, :match)
+
+    # expand function with anonymous function
+    # fn (x, y, z) when xxx -> nil end
     expanded_args =
       Enum.map(args, fn arg ->
         arg
@@ -51,7 +59,7 @@ defmodule ExType.Parser do
           code ->
             code
         end)
-        |> :elixir_expand.expand(updated_env)
+        |> :elixir_expand.expand(matched_env)
         |> elem(0)
       end)
 
@@ -67,7 +75,7 @@ defmodule ExType.Parser do
         # support T.assert
         {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
           case arg do
-            {operator, _, [left, right]} when operator in [:==, :::, :<, :>] ->
+            {operator, _, [left, right]} when operator in [:==, :"::", :<, :>] ->
               {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3,
                [operator, left, Macro.escape(right)]}
           end

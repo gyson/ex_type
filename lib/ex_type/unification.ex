@@ -149,22 +149,58 @@ defmodule ExType.Unification do
 
   def unify_pattern(context, {:<<>>, _, args}, %Type.BitString{}) do
     Enum.reduce(args, context, fn
-      {:::, _, [{var, _, ctx}, {:-, _, [{:integer, _, []}, {:size, _, [size]}]}]}, acc
+      {:"::", _, [{var, _, ctx}, {:-, _, [{:integer, _, []}, {:size, _, [size]}]}]}, acc
       when is_atom(var) and is_atom(ctx) and is_integer(size) ->
         Context.update_scope(acc, var, %Type.Integer{})
 
-      {:::, _, [int, {:integer, _, []}]}, acc when is_integer(int) ->
+      {:"::", _,
+       [
+         {var, _, ctx},
+         {:-, _, [{:-, _, [{:integer, _, []}, {:unsigned, _, []}]}, {:size, [], _}]}
+       ]},
+      acc
+      when is_atom(var) and is_atom(ctx) ->
+        Context.update_scope(acc, var, %Type.Integer{})
+
+      {:"::", _,
+       [{var, _, ctx}, {:-, _, [{:integer, _, []}, {:size, _, [{size_var, _, size_ctx}]}]}]},
+      acc
+      when is_atom(var) and is_atom(ctx) and is_atom(size_var) and is_atom(size_ctx) ->
+        # TODO: assert size_var has type integer
+        Context.update_scope(acc, var, %Type.Integer{})
+
+      {:"::", _,
+       [{var, _, ctx}, {:-, _, [{:bitstring, _, []}, {:size, _, [{size_var, _, size_ctx}]}]}]},
+      acc
+      when is_atom(var) and is_atom(ctx) and is_atom(size_var) and is_atom(size_ctx) ->
+        # TODO: assert size_var has type integer
+        Context.update_scope(acc, var, %Type.BitString{})
+
+      {:"::", _, [int, {:integer, _, []}]}, acc when is_integer(int) ->
         acc
 
-      {:::, _, [{var, _, ctx}, {:float, _, []}]}, acc when is_atom(var) and is_atom(ctx) ->
+      {:"::", _, [{var, _, ctx}, {:integer, _, []}]}, acc when is_atom(var) and is_atom(ctx) ->
+        Context.update_scope(acc, var, %Type.Integer{})
+
+      {:"::", _, [{var, _, ctx}, {:float, _, []}]}, acc when is_atom(var) and is_atom(ctx) ->
         Context.update_scope(acc, var, %Type.Float{})
 
-      {:::, _, [{var, _, ctx}, {:bitstring, _, []}]}, acc when is_atom(var) and is_atom(ctx) ->
+      {:"::", _, [{var, _, ctx}, {:bitstring, _, []}]}, acc when is_atom(var) and is_atom(ctx) ->
         Context.update_scope(acc, var, %Type.BitString{})
 
-      {:::, _, [{var, _, ctx}, {:-, _, [{:bitstring, _, []}, {:size, _, [size]}]}]}, acc
+      {:"::", _, [{var, _, ctx}, {:-, _, [{:bitstring, _, []}, {:size, _, [size]}]}]}, acc
       when is_atom(var) and is_atom(ctx) and is_integer(size) ->
         Context.update_scope(acc, var, %Type.BitString{})
+    end)
+  end
+
+  # TODO: check if struct module match
+  def unify_pattern(context, {:%, _, [_struct, {:%{}, _, args}]}, %ExType.Type.Struct{
+        types: types
+      })
+      when is_list(args) do
+    Enum.reduce(args, context, fn {key, value}, context when is_atom(key) ->
+      unify_pattern(context, value, Map.fetch!(types, key))
     end)
   end
 
@@ -207,13 +243,23 @@ defmodule ExType.Unification do
     Context.update_scope(context, var, %Type.Float{})
   end
 
-  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :<=] do
+  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :"=<"] do
     context
   end
 
   # TODO: add more type check
 
   def unify_guard(context, {{:., _, [:erlang, :andalso]}, _, [left, right]}) do
+    context
+    |> unify_guard(left)
+    |> unify_guard(right)
+  end
+
+  # expanded form ?
+  def unify_guard(
+        context,
+        {:case, _, [left, [do: [{:->, _, [[false], false]}, {:->, _, [[true], right]}]]]}
+      ) do
     context
     |> unify_guard(left)
     |> unify_guard(right)
