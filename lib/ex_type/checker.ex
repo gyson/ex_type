@@ -15,10 +15,19 @@ defmodule ExType.Checker do
     {context, %Type.Map{key: %Type.Any{}, value: %Type.Any{}}}
   end
 
-  def eval(context, {:%{}, _, args}) when is_list(args) do
-    case eval(context, args) do
-      {_, %Type.List{type: %Type.TypedTuple{types: [left, right]}}} ->
-        {context, %Type.Map{key: left, value: right}}
+  def eval(context, {:%{}, meta, args}) when is_list(args) do
+
+    case Keyword.fetch(args, :__struct__) do
+      # e.g. literal range
+      # https://github.com/elixir-lang/elixir/blob/0f5fffc0cfc0cbeef6bdca957afef9530fa5ed96/lib/elixir/lib/kernel.ex#L3228
+      {:ok, struct} when is_atom(struct) ->
+        eval(context, {:%, meta, [struct, {:%{}, meta, Keyword.delete(args, :__struct__)}]})
+
+      :error ->
+        case eval(context, args) do
+          {_, %Type.List{type: %Type.TypedTuple{types: [left, right]}}} ->
+            {context, %Type.Map{key: left, value: right}}
+        end
     end
   end
 
@@ -33,18 +42,7 @@ defmodule ExType.Checker do
     {context, %Type.BitString{}}
   end
 
-  def eval(context, {:%, meta, [struct, {:%{}, _, args}]}) do
-    # remove Elixir.ExType.Module prefix for some struct
-    # TODO: handle it properly ?
-    struct =
-      case Module.split(struct) do
-        ["ExType", "Module" | rest] ->
-          Module.concat(rest)
-
-        _ ->
-          struct
-      end
-
+  def eval(context, {:%, meta, [struct, {:%{}, _, args}]}) when is_atom(struct) do
     if not Helper.is_struct(struct) do
       Helper.throw(
         message: "#{struct} is not struct",

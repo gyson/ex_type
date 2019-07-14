@@ -578,6 +578,12 @@ defmodule ExType.Typespec do
     ])
   end
 
+  # integer range
+  def eval_type({:.., _, [_left, _right]}, _context) do
+    # TODO: support actual integer range
+    %Type.Integer{}
+  end
+
   # type variable
   def eval_type({name, meta, atom}, {_, vars} = context) when is_atom(name) and is_atom(atom) do
     case vars do

@@ -190,4 +190,12 @@ defmodule ExType.Example.Foo do
   def binary_example(<<a::1, b::1, c::bits>>) do
     {a, b, c}
   end
+
+  @spec range_example() :: [float()]
+
+  def range_example() do
+    for i <- 1..10 do
+      i + 2.0
+    end
+  end
 end

@@ -16,6 +16,8 @@ defmodule ExType.Parser do
   def expand(call, block, env) do
     {name, args, guard} = expand_call(call)
 
+    module_name = Helper.get_module(env.module)
+
     # find all bindings in args
     # make `:elixir_expand.expand` works as expected
     current_vars =
@@ -59,11 +61,12 @@ defmodule ExType.Parser do
           code ->
             code
         end)
+        |> replace_module_macro(module_name)
         |> :elixir_expand.expand(matched_env)
         |> elem(0)
       end)
 
-    expanded_guard = guard |> :elixir_expand.expand(updated_env) |> elem(0)
+    expanded_guard = guard |> replace_module_macro(module_name) |> :elixir_expand.expand(updated_env) |> elem(0)
 
     expanded_body =
       block
@@ -83,9 +86,22 @@ defmodule ExType.Parser do
         code ->
           code
       end)
+      |> replace_module_macro(module_name)
       |> :elixir_expand.expand(updated_env)
       |> elem(0)
 
     {name, expanded_args, expanded_guard, expanded_body}
+  end
+
+  # replace __MODULLE__ with actual module name, removed "ExType.Module" prefix
+  # TODO: handle this properly when replace :elixir_expand.expand, especially for nested case
+  defp replace_module_macro(block, module_name) do
+    Macro.postwalk(block, fn
+      {:__MODULE__, _, ctx} when is_atom(ctx) ->
+        module_name
+
+      code ->
+        code
+    end)
   end
 end

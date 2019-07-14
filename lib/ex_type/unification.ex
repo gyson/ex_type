@@ -153,6 +153,11 @@ defmodule ExType.Unification do
       when is_atom(var) and is_atom(ctx) and is_integer(size) ->
         Context.update_scope(acc, var, %Type.Integer{})
 
+      # e.g. <<1::4>>
+      {:"::", _, [int, {:-, _, [{:integer, _, []}, {:size, _, [size]}]}]}, acc
+        when is_integer(int) and is_integer(size) ->
+          acc
+
       {:"::", _,
        [
          {var, _, ctx},
