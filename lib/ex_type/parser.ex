@@ -66,7 +66,8 @@ defmodule ExType.Parser do
         |> elem(0)
       end)
 
-    expanded_guard = guard |> replace_module_macro(module_name) |> :elixir_expand.expand(updated_env) |> elem(0)
+    expanded_guard =
+      guard |> replace_module_macro(module_name) |> :elixir_expand.expand(updated_env) |> elem(0)
 
     expanded_body =
       block

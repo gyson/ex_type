@@ -149,14 +149,18 @@ defmodule ExType.Unification do
 
   def unify_pattern(context, {:<<>>, _, args}, %Type.BitString{}) do
     Enum.reduce(args, context, fn
+      # binary literal <<"HYLL">>
+      {:"::", _, [bin, {:binary, _, []}]}, acc when is_binary(bin) ->
+        acc
+
       {:"::", _, [{var, _, ctx}, {:-, _, [{:integer, _, []}, {:size, _, [size]}]}]}, acc
       when is_atom(var) and is_atom(ctx) and is_integer(size) ->
         Context.update_scope(acc, var, %Type.Integer{})
 
       # e.g. <<1::4>>
       {:"::", _, [int, {:-, _, [{:integer, _, []}, {:size, _, [size]}]}]}, acc
-        when is_integer(int) and is_integer(size) ->
-          acc
+      when is_integer(int) and is_integer(size) ->
+        acc
 
       {:"::", _,
        [

@@ -16,7 +16,6 @@ defmodule ExType.Checker do
   end
 
   def eval(context, {:%{}, meta, args}) when is_list(args) do
-
     case Keyword.fetch(args, :__struct__) do
       # e.g. literal range
       # https://github.com/elixir-lang/elixir/blob/0f5fffc0cfc0cbeef6bdca957afef9530fa5ed96/lib/elixir/lib/kernel.ex#L3228

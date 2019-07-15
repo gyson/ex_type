@@ -50,7 +50,7 @@ defmodule ExType.Example.Foo do
       a + b
     end)
     |> Enum.flat_map(fn k ->
-        [k, k]
+      [k, k]
     end)
     |> Enum.reduce(1, fn x, y ->
       x + y
@@ -197,5 +197,19 @@ defmodule ExType.Example.Foo do
     for i <- 1..10 do
       i + 2.0
     end
+  end
+
+  @spec map_to_list() :: [{binary(), integer()}]
+
+  def map_to_list() do
+    %{"hello" => 123}
+    |> Map.to_list()
+  end
+
+  @spec map_values() :: [integer()]
+
+  def map_values() do
+    %{"hello" => 123}
+    |> Map.values()
   end
 end

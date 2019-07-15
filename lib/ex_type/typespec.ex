@@ -654,7 +654,7 @@ defmodule ExType.Typespec do
             input_types = Enum.map(inputs, &eval_type(&1, new_context))
             output_type = eval_type(output, new_context)
 
-            {input_types, output_type, Map.values(spec_vars)}
+            {input_types, output_type, spec_vars}
           end)
 
         {:ok, result}

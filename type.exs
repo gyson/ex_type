@@ -1,7 +1,7 @@
 [
   # find these files
   include: [
-    "lib/example/*.ex",
+    "lib/example/**/*.ex",
     "lib/ex_type.ex",
     "test/**/*_test_case.ex"
   ],
