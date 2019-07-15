@@ -80,8 +80,6 @@ defimpl Typespecable, for: Type.Intersection do
   def get_protocol_path(_), do: :error
 end
 
-use ExType.Helper
-
 defimpl Typespecable, for: Type.SpecVariable do
   def to_quote(%Type.SpecVariable{name: name, spec: {module, _, _}}) do
     quote do
@@ -90,8 +88,6 @@ defimpl Typespecable, for: Type.SpecVariable do
   end
 
   def resolve_vars(%Type.SpecVariable{} = spec_var, vars) do
-    # Helper.inspect(binding())
-    # Helper.stacktrace()
     case Map.fetch(vars, spec_var) do
       {:ok, type} ->
         type
