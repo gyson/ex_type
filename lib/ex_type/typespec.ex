@@ -785,6 +785,15 @@ defmodule ExType.Typespec do
     end
   end
 
+  def match_typespec(
+        map,
+        %Type.GenericProtocol{module: module, generic: generic_typespec},
+        %Type.GenericProtocol{module: module, generic: generic_type}
+      )
+      when is_atom(module) do
+    match_typespec(map, generic_typespec, generic_type)
+  end
+
   def match_typespec(map, %Type.GenericProtocol{module: module, generic: generic}, type) do
     {:ok, name} = Typespecable.get_protocol_path(type)
 

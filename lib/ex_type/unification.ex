@@ -149,6 +149,18 @@ defmodule ExType.Unification do
 
   def unify_pattern(context, {:<<>>, _, args}, %Type.BitString{}) do
     Enum.reduce(args, context, fn
+      {:"::", _, [{var, _, ctx}, size]}, acc
+      when is_atom(var) and is_atom(ctx) and is_integer(size) ->
+        Context.update_scope(acc, var, %Type.Integer{})
+
+      {:"::", _, [{var, _, ctx}, {:bits, _, bits_ctx}]}, acc
+      when is_atom(var) and is_atom(ctx) and is_atom(bits_ctx) ->
+        Context.update_scope(acc, var, %Type.BitString{})
+
+      # e.g. <<1::4>>
+      {:"::", _, [left, right]}, acc when is_integer(left) and is_integer(right) ->
+        acc
+
       # binary literal <<"HYLL">>
       {:"::", _, [bin, {:binary, _, []}]}, acc when is_binary(bin) ->
         acc
@@ -232,7 +244,17 @@ defmodule ExType.Unification do
     Context.update_scope(context, var, %Type.Atom{literal: false})
   end
 
+  def unify_guard(context, {:is_atom, _, [{var, _, ctx}]})
+      when is_atom(var) and is_atom(ctx) do
+    Context.update_scope(context, var, %Type.Atom{literal: false})
+  end
+
   def unify_guard(context, {{:., _, [:erlang, :is_binary]}, _, [{var, _, ctx}]})
+      when is_atom(var) and is_atom(ctx) do
+    Context.update_scope(context, var, %Type.BitString{})
+  end
+
+  def unify_guard(context, {:is_binary, _, [{var, _, ctx}]})
       when is_atom(var) and is_atom(ctx) do
     Context.update_scope(context, var, %Type.BitString{})
   end
@@ -242,7 +264,17 @@ defmodule ExType.Unification do
     Context.update_scope(context, var, %Type.BitString{})
   end
 
+  def unify_guard(context, {:is_bitstring, _, [{var, _, ctx}]})
+      when is_atom(var) and is_atom(ctx) do
+    Context.update_scope(context, var, %Type.BitString{})
+  end
+
   def unify_guard(context, {{:., _, [:erlang, :is_integer]}, _, [{var, _, ctx}]})
+      when is_atom(var) and is_atom(ctx) do
+    Context.update_scope(context, var, %Type.Integer{})
+  end
+
+  def unify_guard(context, {:is_integer, _, [{var, _, ctx}]})
       when is_atom(var) and is_atom(ctx) do
     Context.update_scope(context, var, %Type.Integer{})
   end
@@ -252,7 +284,16 @@ defmodule ExType.Unification do
     Context.update_scope(context, var, %Type.Float{})
   end
 
+  def unify_guard(context, {:is_float, _, [{var, _, ctx}]})
+      when is_atom(var) and is_atom(ctx) do
+    Context.update_scope(context, var, %Type.Float{})
+  end
+
   def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :"=<"] do
+    context
+  end
+
+  def unify_guard(context, {op, _, [_, _]}) when op in [:>, :<, :>=, :<=] do
     context
   end
 
@@ -268,6 +309,26 @@ defmodule ExType.Unification do
   def unify_guard(
         context,
         {:case, _, [left, [do: [{:->, _, [[false], false]}, {:->, _, [[true], right]}]]]}
+      ) do
+    context
+    |> unify_guard(left)
+    |> unify_guard(right)
+  end
+
+  # expand from ExType.Parser.expand_all
+  def unify_guard(
+        context,
+        {:case, _,
+         [
+           left,
+           [
+             do: [
+               {:->, _, [[false], false]},
+               {:->, _, [[true], right]},
+               {:->, _, [[{:other, _, _}], _]}
+             ]
+           ]
+         ]}
       ) do
     context
     |> unify_guard(left)

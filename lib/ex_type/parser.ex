@@ -62,12 +62,10 @@ defmodule ExType.Parser do
             code
         end)
         |> replace_module_macro(module_name)
-        |> :elixir_expand.expand(matched_env)
-        |> elem(0)
+        |> expand_all(matched_env)
       end)
 
-    expanded_guard =
-      guard |> replace_module_macro(module_name) |> :elixir_expand.expand(updated_env) |> elem(0)
+    expanded_guard = guard |> replace_module_macro(module_name) |> expand_all(updated_env)
 
     expanded_body =
       block
@@ -88,8 +86,7 @@ defmodule ExType.Parser do
           code
       end)
       |> replace_module_macro(module_name)
-      |> :elixir_expand.expand(updated_env)
-      |> elem(0)
+      |> expand_all(updated_env)
 
     {name, expanded_args, expanded_guard, expanded_body}
   end
@@ -104,5 +101,9 @@ defmodule ExType.Parser do
       code ->
         code
     end)
+  end
+
+  defp expand_all(ast, env) do
+    Macro.prewalk(ast, &Macro.expand(&1, env))
   end
 end

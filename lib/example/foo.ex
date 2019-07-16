@@ -57,6 +57,14 @@ defmodule ExType.Example.Foo do
     end)
   end
 
+  @spec enum_into() :: :ok
+
+  def enum_into() do
+    Enum.into([{"hello", 123}], %{})
+
+    :ok
+  end
+
   @spec for_fn() :: [integer()]
 
   def for_fn() do
