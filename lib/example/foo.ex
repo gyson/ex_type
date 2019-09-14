@@ -11,7 +11,8 @@ end
 defmodule ExType.Example.Foo do
   @moduledoc false
 
-  require T
+  require ExType.T
+  alias ExType.T
 
   @spec unquote_example() :: integer()
 

@@ -1,5 +1,6 @@
 defmodule ExType.Typespec.Elixir.EnumTestCase do
-  require T
+  require ExType.T
+  alias ExType.T
 
   # prevent some Elixir compiler warning
   defp noop(_), do: nil

@@ -1,5 +1,6 @@
 defmodule ExType.CheckerTestCase do
-  require T
+  require ExType.T
+  alias ExType.T
 
   @spec test_case_1({:ok, integer()} | :error) :: any()
 
