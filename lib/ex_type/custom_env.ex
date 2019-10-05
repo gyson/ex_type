@@ -1,7 +1,16 @@
 defmodule ExType.CustomEnv do
   @moduledoc false
 
-  use ExType.Helper
+  alias ExType.{
+    Context,
+    Type,
+    Typespec,
+    Helper,
+    Emoji,
+    Parser
+  }
+
+  require ExType.Helper
 
   defmodule BeforeCompile do
     @moduledoc false

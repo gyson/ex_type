@@ -3,8 +3,6 @@ defmodule ExType.Filter do
 
   # Support mix type.only
 
-  use ExType.Helper
-
   @table_name ExType.Filter.Table
   @key_name ExType.Filter.Key
 

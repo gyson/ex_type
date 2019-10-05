@@ -1,7 +1,8 @@
 defmodule ExType.Parser do
   @moduledoc false
 
-  use ExType.Helper
+  alias ExType.Helper
+  require ExType.Helper
 
   def expand_call({:when, _, [{name, _, args}, guard]}) do
     {name, args, guard}
