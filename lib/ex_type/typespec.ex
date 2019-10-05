@@ -1,7 +1,14 @@
 defmodule ExType.Typespec do
   @moduledoc false
 
-  use ExType.Helper
+  alias ExType.{
+    Type,
+    Typespec,
+    Typespecable,
+    Helper
+  }
+
+  require ExType.Helper
 
   defmacro deftypespec(name, do: block) do
     module_name =

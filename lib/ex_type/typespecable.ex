@@ -1,8 +1,6 @@
 # Protocol for ExType.Type
 
-alias ExType.Type
-alias ExType.Typespec
-alias ExType.Typespecable
+alias ExType.{Type, Typespec, Typespecable}
 
 defprotocol ExType.Typespecable do
   @moduledoc false

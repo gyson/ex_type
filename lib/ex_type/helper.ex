@@ -1,23 +1,6 @@
 defmodule ExType.Helper do
   @moduledoc false
 
-  defmacro __using__(_opts) do
-    quote do
-      alias ExType.Checker
-      alias ExType.Context
-      alias ExType.CustomEnv
-      alias ExType.Type
-      alias ExType.Emoji
-      alias ExType.Helper
-      alias ExType.Parser
-      alias ExType.Typespec
-      alias ExType.Typespecable
-      alias ExType.Unification
-
-      require ExType.Helper
-    end
-  end
-
   defmacro inspect(item, opts \\ []) do
     quote bind_quoted: [item: item, opts: opts] do
       IO.puts("-------------------------------------------------")

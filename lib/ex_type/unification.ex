@@ -13,7 +13,14 @@ end
 defmodule ExType.Unification do
   @moduledoc false
 
-  use ExType.Helper
+  alias ExType.{
+    Type,
+    Typespec,
+    Context,
+    Helper
+  }
+
+  require ExType.Helper
 
   @spec unify_pattern(Context.t(), any(), Type.t()) :: Context.t()
 

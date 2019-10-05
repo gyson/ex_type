@@ -7,7 +7,18 @@ end
 defmodule ExType.Checker do
   @moduledoc false
 
-  use ExType.Helper
+  alias ExType.{
+    Context,
+    Type,
+    Typespec,
+    Unification,
+    Typespecable,
+    Parser,
+    Helper,
+    Emoji
+  }
+
+  require ExType.Helper
 
   @spec eval(Context.t(), any()) :: {Context.t(), Type.t()}
 
