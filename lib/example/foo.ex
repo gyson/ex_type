@@ -221,4 +221,10 @@ defmodule ExType.Example.Foo do
     %{"hello" => 123}
     |> Map.values()
   end
+
+  @spec add_number(number(), number()) :: number()
+
+  def add_number(x, y) do
+    x + y
+  end
 end

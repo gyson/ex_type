@@ -5,7 +5,8 @@ defmodule ExType.Typespec do
     Type,
     Typespec,
     Typespecable,
-    Helper
+    Helper,
+    ArgumentExpander
   }
 
   require ExType.Helper
@@ -206,6 +207,10 @@ defmodule ExType.Typespec do
               |> Enum.sort()
           }
         end
+    end
+    |> case do
+      %Type.Union{types: [one]} -> one
+      other -> other
     end
   end
 
@@ -674,41 +679,45 @@ defmodule ExType.Typespec do
   def eval_spec(module, name, input_types) do
     case fetch_specs(module, name, length(input_types)) do
       {:ok, specs} ->
-        result_types =
-          specs
-          |> Enum.flat_map(fn {inputs, output, _} ->
-            try do
-              map =
-                Enum.zip(inputs, input_types)
-                |> Enum.reduce(%{}, fn {input, input_type}, acc_context ->
-                  match_typespec(acc_context, input, input_type)
-                end)
+        input_types
+        |> ArgumentExpander.expand_union_types()
+        |> Enum.reduce_while({:ok, Type.none()}, fn expanded_input_types, {:ok, acc_type} ->
+          result_types =
+            specs
+            |> Enum.flat_map(fn {inputs, output, _} ->
+              try do
+                map =
+                  Enum.zip(inputs, expanded_input_types)
+                  |> Enum.reduce(%{}, fn {input, input_type}, acc_context ->
+                    match_typespec(acc_context, input, input_type)
+                  end)
 
-              [Typespecable.resolve_vars(output, map)]
-            catch
-              error ->
-                # `unmatch` case could happen regularly.
-                if error.unmatch do
-                  []
-                else
-                  # this is actual type error, rethrow it
-                  throw(error)
-                end
-            end
-          end)
+                [Typespecable.resolve_vars(output, map)]
+              catch
+                error ->
+                  # `unmatch` case could happen regularly.
+                  if error.unmatch do
+                    []
+                  else
+                    # this is actual type error, rethrow it
+                    throw(error)
+                  end
+              end
+            end)
 
-        if Enum.empty?(result_types) do
-          expr =
-            quote do
-              unquote(module).unquote(name)(
-                unquote_splicing(Enum.map(input_types, &Typespecable.to_quote/1))
-              )
-            end
+          if Enum.empty?(result_types) do
+            expr =
+              quote do
+                unquote(module).unquote(name)(
+                  unquote_splicing(Enum.map(expanded_input_types, &Typespecable.to_quote/1))
+                )
+              end
 
-          {:error, Macro.to_string(expr)}
-        else
-          {:ok, union_types(result_types)}
-        end
+            {:halt, {:error, Macro.to_string(expr)}}
+          else
+            {:cont, {:ok, union_types([acc_type | result_types])}}
+          end
+        end)
 
       {:error, _} ->
         {:error, :not_found}
