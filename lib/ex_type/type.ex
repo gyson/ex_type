@@ -1,6 +1,8 @@
 defmodule ExType.Type do
   @moduledoc false
 
+  alias ExType.Assert
+
   @type t ::
           ExType.Type.Any.t()
           | ExType.Type.None.t()
@@ -36,6 +38,8 @@ defmodule ExType.Type do
     defstruct []
   end
 
+  def any, do: %Any{}
+
   defmodule None do
     @moduledoc false
 
@@ -43,6 +47,8 @@ defmodule ExType.Type do
 
     defstruct []
   end
+
+  def none, do: %None{}
 
   defmodule Union do
     @moduledoc false
@@ -54,6 +60,14 @@ defmodule ExType.Type do
     defstruct [:types]
   end
 
+  def union(types) when is_list(types) do
+    Assert.is_list_of_type_structs!(types)
+
+    %Union{types: types}
+  end
+
+  # assert_type_struct
+
   defmodule Intersection do
     @moduledoc false
 
@@ -62,6 +76,11 @@ defmodule ExType.Type do
           }
 
     defstruct [:types]
+  end
+
+  def intersection(types) when is_list(types) do
+    Assert.is_list_of_type_structs!(types)
+    %Intersection{types: types}
   end
 
   defmodule SpecVariable do
@@ -95,6 +114,12 @@ defmodule ExType.Type do
     defstruct [:module, :generic]
   end
 
+  def generic_protocol(module, generic) do
+    Assert.is_type_struct!(generic)
+
+    %GenericProtocol{module: module, generic: generic}
+  end
+
   defmodule Float do
     @moduledoc false
 
@@ -103,6 +128,8 @@ defmodule ExType.Type do
     defstruct []
   end
 
+  def float, do: %Float{}
+
   defmodule Integer do
     @moduledoc false
 
@@ -110,6 +137,8 @@ defmodule ExType.Type do
 
     defstruct []
   end
+
+  def integer, do: %Integer{}
 
   defmodule Atom do
     @moduledoc false
@@ -122,6 +151,8 @@ defmodule ExType.Type do
     defstruct [:literal, :value]
   end
 
+  def atom, do: %Atom{}
+
   defmodule Reference do
     @moduledoc false
 
@@ -130,6 +161,8 @@ defmodule ExType.Type do
     defstruct []
   end
 
+  def reference, do: %Reference{}
+
   defmodule AnyFunction do
     @moduledoc false
 
@@ -137,6 +170,8 @@ defmodule ExType.Type do
 
     defstruct []
   end
+
+  def any_function, do: %AnyFunction{}
 
   defmodule RawFunction do
     @moduledoc false
@@ -170,6 +205,12 @@ defmodule ExType.Type do
     defstruct [:type]
   end
 
+  def list(type) do
+    Assert.is_type_struct!(type)
+
+    %List{type: type}
+  end
+
   # StructLikeMap
   # Map.StructLike => it's map, not struct, but it has all atom as key,
   #                   so it's struct like map
@@ -183,6 +224,13 @@ defmodule ExType.Type do
           }
 
     defstruct [:key, :value]
+  end
+
+  def map(key_type, value_type) do
+    Assert.is_type_struct!(key_type)
+    Assert.is_type_struct!(value_type)
+
+    %Map{key: key_type, value: value_type}
   end
 
   # Struct and TypedStruct ?
@@ -215,6 +263,8 @@ defmodule ExType.Type do
     defstruct []
   end
 
+  def port, do: %Port{}
+
   defmodule PID do
     @moduledoc false
 
@@ -223,6 +273,8 @@ defmodule ExType.Type do
     defstruct []
   end
 
+  def pid, do: %PID{}
+
   defmodule AnyTuple do
     @moduledoc false
 
@@ -230,6 +282,8 @@ defmodule ExType.Type do
 
     defstruct []
   end
+
+  def any_tuple, do: %AnyTuple{}
 
   defmodule TypedTuple do
     @moduledoc false
@@ -241,6 +295,12 @@ defmodule ExType.Type do
     defstruct [:types]
   end
 
+  def typed_tuple(types) when is_list(types) do
+    Assert.is_list_of_type_structs!(types)
+
+    %TypedTuple{types: types}
+  end
+
   # TODO: distinguish bitstring and binary ???
   defmodule BitString do
     @moduledoc false
@@ -249,4 +309,6 @@ defmodule ExType.Type do
 
     defstruct []
   end
+
+  def bit_string, do: %BitString{}
 end
