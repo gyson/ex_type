@@ -80,6 +80,10 @@ defmodule ExType.Unification do
     context
   end
 
+  def unify_pattern(context, atom, %Type.Atom{literal: false}) when is_atom(atom) do
+    context
+  end
+
   def unify_pattern(context, atom, %Type.Any{}) when is_atom(atom) do
     context
   end
@@ -300,7 +304,7 @@ defmodule ExType.Unification do
     Context.update_scope(context, var, %Type.Float{})
   end
 
-  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :"=<"] do
+  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :"=<", :"=:="] do
     context
   end
 
