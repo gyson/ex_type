@@ -19,10 +19,10 @@ The package can be installed by adding `ex_type` to your list of dependencies in
 def deps do
   [
     # Required developement dependency
-    {:ex_type, "~> 0.4.0", only: :dev, runtime: false},
+    {:ex_type, "~> 0.5.0", only: :dev, runtime: false},
 
     # Optional runtime dependency
-    {:ex_type_runtime, "~> 0.1.0"}
+    {:ex_type_runtime, "~> 0.2.0"}
   ]
 end
 ```
