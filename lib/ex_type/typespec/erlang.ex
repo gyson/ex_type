@@ -51,4 +51,8 @@ deftypespec :erlang do
   @spec phash2(any(), integer()) :: integer()
 
   @spec max(first, second) :: first | second when first: any(), second: any()
+
+  @spec orelse(boolean(), x) :: boolean() | x when x: any()
+
+  @spec andalso(boolean(), x) :: boolean() | x when x: any()
 end
