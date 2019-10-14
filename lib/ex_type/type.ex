@@ -179,10 +179,11 @@ defmodule ExType.Type do
     @type t :: %__MODULE__{
             arity: integer(),
             clauses: [{[any()], any(), any()}],
-            context: ExType.Context.t()
+            context: ExType.Context.t(),
+            meta: Keyword.t()
           }
 
-    defstruct [:arity, :clauses, :context]
+    defstruct [:arity, :clauses, :context, :meta]
   end
 
   defmodule TypedFunction do

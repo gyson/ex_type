@@ -765,25 +765,58 @@ defmodule ExType.Typespec do
   def match_typespec(
         map,
         %Type.TypedFunction{inputs: inputs, output: output},
-        %Type.RawFunction{arity: arity, clauses: clauses, context: fn_context}
+        %Type.RawFunction{arity: arity, clauses: clauses, context: fn_context, meta: fn_meta}
       )
       when length(inputs) == arity do
-    # need to resolve inputs ? then, make sure it's concrete type ?
-    resolved_inputs = Enum.map(inputs, &Typespecable.resolve_vars(&1, map))
-
     final_result_type =
-      clauses
-      |> Enum.map(fn {args, guard, body} ->
-        new_fn_context =
-          Enum.zip(args, resolved_inputs)
-          |> Enum.reduce(fn_context, fn {arg, resolved_input}, fn_context ->
-            ExType.Unification.unify_pattern(fn_context, arg, resolved_input)
-          end)
-          |> ExType.Unification.unify_guard(guard)
+      inputs
+      # need to resolve inputs ? then, make sure it's concrete type ?
+      |> Enum.map(&Typespecable.resolve_vars(&1, map))
+      |> ArgumentExpander.expand_union_types()
+      |> Enum.flat_map(fn input_types ->
+        clauses
+        |> Enum.flat_map(fn {args, guard, body} ->
+          try do
+            new_fn_context =
+              Enum.zip(args, input_types)
+              |> Enum.reduce(fn_context, fn {arg, input_type}, fn_context ->
+                ExType.Unification.unify_pattern(fn_context, arg, input_type)
+              end)
+              |> ExType.Unification.unify_guard(guard)
 
-        {_, result_type} = ExType.Checker.eval(new_fn_context, body)
+            {:ok, new_fn_context}
+          catch
+            _ ->
+              # cannot match spec
+              :not_match
+          end
+          |> case do
+            {:ok, new_fn_context} ->
+              {_, result_type} = ExType.Checker.eval(new_fn_context, body)
 
-        result_type
+              [result_type]
+
+            :not_match ->
+              []
+          end
+        end)
+        |> case do
+          [] ->
+            # the input types does not match any pattern
+            input_type_string =
+              input_types
+              |> Enum.map(fn t -> Typespecable.to_quote(t) |> Macro.to_string() end)
+              |> Enum.join(", ")
+
+            Helper.throw(
+              message: "Cannot match input types (#{input_type_string})",
+              context: fn_context,
+              meta: fn_meta
+            )
+
+          types ->
+            types
+        end
       end)
       |> Typespec.union_types()
 

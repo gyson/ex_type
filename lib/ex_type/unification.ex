@@ -80,6 +80,10 @@ defmodule ExType.Unification do
     context
   end
 
+  def unify_pattern(context, atom, %Type.Atom{literal: false}) when is_atom(atom) do
+    context
+  end
+
   def unify_pattern(context, atom, %Type.Any{}) when is_atom(atom) do
     context
   end
@@ -222,19 +226,23 @@ defmodule ExType.Unification do
     end)
   end
 
-  # TODO: check if struct module match
-  def unify_pattern(context, {:%, _, [_struct, {:%{}, _, args}]}, %ExType.Type.Struct{
-        types: types
-      })
-      when is_list(args) do
+  def unify_pattern(
+        context,
+        {:%, _, [struct, {:%{}, _, args}]},
+        %ExType.Type.Struct{
+          struct: struct,
+          types: types
+        }
+      )
+      when is_atom(struct) and is_list(args) do
     Enum.reduce(args, context, fn {key, value}, context when is_atom(key) ->
       unify_pattern(context, value, Map.fetch!(types, key))
     end)
   end
 
-  def unify_pattern(context, pattern, _type) do
+  def unify_pattern(context, pattern, type) do
     Helper.throw(
-      message: "unsupported pattern: #{Macro.to_string(pattern)}",
+      message: "unsupported pattern: #{Macro.to_string(pattern)} #{inspect(type)}",
       context: context,
       meta:
         case pattern do
@@ -296,7 +304,7 @@ defmodule ExType.Unification do
     Context.update_scope(context, var, %Type.Float{})
   end
 
-  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :"=<"] do
+  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :"=<", :"=:="] do
     context
   end
 

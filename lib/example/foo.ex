@@ -194,6 +194,10 @@ defmodule ExType.Example.Foo do
     x
   end
 
+  def union_example(:error) do
+    "error"
+  end
+
   @spec binary_example(binary()) :: {integer(), integer(), bitstring()}
 
   def binary_example(<<a::1, b::1, c::bits>>) do
