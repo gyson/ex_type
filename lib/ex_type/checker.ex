@@ -180,7 +180,7 @@ defmodule ExType.Checker do
   end
 
   # support T.inspect
-  def eval(context, {{:., meta, [ExType.T, :inspect]}, _, args}) do
+  def eval(context, {{:., meta, [ExType.T.TypeCheck, :inspect]}, _, args}) do
     location = "#{context.env.file}:#{Keyword.get(meta, :line, "?")}"
 
     case args do
@@ -200,7 +200,7 @@ defmodule ExType.Checker do
   end
 
   # support T.assert
-  def eval(context, {{:., meta, [ExType.T, :assert]}, _, [operator, left, escaped_right]}) do
+  def eval(context, {{:., meta, [ExType.T.TypeCheck, :assert]}, _, [operator, left, escaped_right]}) do
     {right_spec, []} = Code.eval_quoted(escaped_right)
 
     # TODO: maybe use map from the context ?

@@ -73,13 +73,13 @@ defmodule ExType.Parser do
       |> Macro.postwalk(fn
         # support T.inspect
         {:., m1, [{:__aliases__, m2, [:T]}, :inspect]} ->
-          {:., m1, [{:__aliases__, m2, [:ExType, :T]}, :inspect]}
+          {:., m1, [{:__aliases__, m2, [:ExType, :T, :TypeCheck]}, :inspect]}
 
         # support T.assert
         {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
           case arg do
             {operator, _, [left, right]} when operator in [:==, :"::", :<, :>] ->
-              {{:., m1, [{:__aliases__, m2, [:ExType, :T]}, :assert]}, m3,
+              {{:., m1, [{:__aliases__, m2, [:ExType, :T, :TypeCheck]}, :assert]}, m3,
                [operator, left, Macro.escape(right)]}
           end
 
