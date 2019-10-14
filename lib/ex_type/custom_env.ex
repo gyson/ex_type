@@ -50,9 +50,11 @@ defmodule ExType.CustomEnv do
           {:error, _} -> false
         end
       end)
-      # |> Helper.inspect
-      |> Enum.map(fn {call, block, _, _} ->
-        ExType.CustomEnv.process_defs(call, block, env, defps)
+      |> Enum.group_by(fn {_, _, name, arity} -> {name, arity} end, fn {call, block, _, _} ->
+        {call, block}
+      end)
+      |> Enum.map(fn {{name, arity}, call_blocks} ->
+        ExType.CustomEnv.process_defs(name, arity, call_blocks, env, defps)
       end)
 
       quote(do: nil)
@@ -112,9 +114,7 @@ defmodule ExType.CustomEnv do
     Module.put_attribute(module, :ex_type_defp, {call, block})
   end
 
-  def process_defs(call, block, caller_env, defps) do
-    {name, args, guard, body} = Parser.expand(call, block, caller_env)
-
+  def process_defs(name, arity, call_blocks, caller_env, defps) do
     module = Helper.get_module(caller_env.module)
 
     # TODO: support multiple functions pattern match
@@ -132,22 +132,33 @@ defmodule ExType.CustomEnv do
         env: caller_env,
         functions: functions
       }
-      |> Context.append_stack(name, length(args))
+      |> Context.append_stack(name, arity)
 
     raw_fn = %Type.RawFunction{
-      arity: length(args),
-      clauses: [{args, guard, body}],
-      context: context
+      arity: arity,
+      context: context,
+      meta: [
+        # if there are multiple clauses, use first one for meta line info
+        line:
+          call_blocks
+          |> Enum.map(fn {{_, [line: line], _}, _} -> line end)
+          |> Enum.min()
+      ],
+      clauses:
+        Enum.map(call_blocks, fn {call, block} ->
+          {^name, args, guard, body} = Parser.expand(call, block, caller_env)
+          {args, guard, body}
+        end)
     }
 
-    case Typespec.fetch_specs(module, name, length(args)) do
+    case Typespec.fetch_specs(module, name, arity) do
       {:ok, [{inputs, output, map}]} ->
         fn_typespec = %Type.TypedFunction{
           inputs: inputs,
           output: output
         }
 
-        path_name = "#{Macro.to_string(module)}.#{name}/#{length(args)}"
+        path_name = "#{Macro.to_string(module)}.#{name}/#{arity}"
 
         try do
           Typespec.match_typespec(map, fn_typespec, raw_fn)
@@ -163,9 +174,12 @@ defmodule ExType.CustomEnv do
             """)
 
             if ExType.Debug.enabled?() do
-              IO.puts("""
-                 * debug at #{error.debug_location}
-              """)
+              IO.puts("   * debug at #{error.debug_location}")
+              IO.puts("   * stacktrace:")
+
+              Enum.each(error.stacktrace, fn info ->
+                IO.puts("        #{info}")
+              end)
             end
         end
     end

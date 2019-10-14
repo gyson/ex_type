@@ -138,37 +138,27 @@ defmodule ExType.Checker do
 
     {_, f} = eval(context, name)
 
-    case f do
-      %Type.RawFunction{context: context, clauses: clauses} ->
-        result_type =
-          Enum.map(clauses, fn {args, guard, body} ->
-            Enum.zip(args, args_values)
-            |> Enum.reduce(context, fn {{name, _, nil}, type}, acc_context ->
-              Context.update_scope(acc_context, name, type)
-            end)
-            |> ExType.Unification.unify_guard(guard)
-            |> eval(body)
-            |> elem(1)
-          end)
-          |> Typespec.union_types()
+    eval_raw_fn = fn %Type.RawFunction{context: context, clauses: clauses} ->
+      Enum.map(clauses, fn {args, guard, body} ->
+        Enum.zip(args, args_values)
+        |> Enum.reduce(context, fn {{name, _, nil}, type}, acc_context ->
+          Context.update_scope(acc_context, name, type)
+        end)
+        |> ExType.Unification.unify_guard(guard)
+        |> eval(body)
+        |> elem(1)
+      end)
+      |> Typespec.union_types()
+    end
 
-        {context, result_type}
+    case f do
+      %Type.RawFunction{} = raw_fn ->
+        {context, eval_raw_fn.(raw_fn)}
 
       # Union of raw function
       %Type.Union{types: types} ->
         result_type =
-          Enum.map(types, fn %Type.RawFunction{context: context, clauses: clauses} ->
-            Enum.map(clauses, fn {args, guard, body} ->
-              Enum.zip(args, args_values)
-              |> Enum.reduce(context, fn {{name, _, nil}, type}, acc_context ->
-                Context.update_scope(acc_context, name, type)
-              end)
-              |> ExType.Unification.unify_guard(guard)
-              |> eval(body)
-              |> elem(1)
-            end)
-            |> Typespec.union_types()
-          end)
+          Enum.map(types, eval_raw_fn)
           |> Typespec.union_types()
 
         {context, result_type}
@@ -200,7 +190,10 @@ defmodule ExType.Checker do
   end
 
   # support T.assert
-  def eval(context, {{:., meta, [ExType.T.TypeCheck, :assert]}, _, [operator, left, escaped_right]}) do
+  def eval(
+        context,
+        {{:., meta, [ExType.T.TypeCheck, :assert]}, _, [operator, left, escaped_right]}
+      ) do
     {right_spec, []} = Code.eval_quoted(escaped_right)
 
     # TODO: maybe use map from the context ?
@@ -289,7 +282,7 @@ defmodule ExType.Checker do
   end
 
   # function
-  def eval(context, {:fn, _, raw_clauses}) when is_list(raw_clauses) do
+  def eval(context, {:fn, meta, raw_clauses}) when is_list(raw_clauses) do
     clauses =
       Enum.map(raw_clauses, fn
         {:->, _, [[{:when, _, when_args}], body]} ->
@@ -307,7 +300,8 @@ defmodule ExType.Checker do
      %Type.RawFunction{
        arity: arity,
        clauses: clauses,
-       context: context
+       context: context,
+       meta: meta
      }}
   end
 

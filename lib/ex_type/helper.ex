@@ -27,11 +27,19 @@ defmodule ExType.Helper do
           :error -> "?"
         end
 
+      {:current_stacktrace, [{Process, :info, 2, _} | stacktrace]} =
+        Process.info(self(), :current_stacktrace)
+
       throw(%{
         message: Keyword.get(options, :message, "unknown message"),
         location: "#{file}:#{line}",
         debug_location: "#{__ENV__.file}:#{__ENV__.line}",
-        unmatch: Keyword.get(options, :unmatch, false)
+        unmatch: Keyword.get(options, :unmatch, false),
+        stacktrace:
+          stacktrace
+          |> Enum.map(fn {_module, _fn, _arity, meta} ->
+            "#{Keyword.fetch!(meta, :file)}:#{Keyword.fetch!(meta, :line)}"
+          end)
       })
     end
   end
