@@ -38,4 +38,10 @@ defmodule ExType.CheckerTestCase do
   def test_case_3 do
     23
   end
+
+  @spec test_case_4(t) :: t when t: var
+
+  def test_case_4(t) do
+    t
+  end
 end
