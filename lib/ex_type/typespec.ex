@@ -408,6 +408,13 @@ defmodule ExType.Typespec do
     eval_type({:any, meta, []}, context)
   end
 
+  # The `when x: var` pattern.
+  # See https://hexdocs.pm/elixir/typespecs.html#defining-a-specification)
+  # and https://github.com/gyson/ex_type/issues/25
+  def eval_type({:var, meta, []}, context) do
+    eval_type({:any, meta, []}, context)
+  end
+
   def eval_type({:arity, meta, []}, context) do
     # TODO: support range
     eval_type({:integer, meta, []}, context)
