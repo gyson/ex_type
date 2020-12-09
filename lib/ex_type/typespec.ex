@@ -779,6 +779,16 @@ defmodule ExType.Typespec do
     map
   end
 
+  def match_typespec(map, %Type.Atom{literal: true, value: atom_spec}, %Type.Atom{literal: true, value: atom}) do
+    if atom_spec == atom do
+      map
+    else
+      Helper.throw(
+        message: "Cannot match atoms (#{atom_spec} != #{atom})"
+      )
+    end
+  end
+
   def match_typespec(
         map,
         %Type.TypedFunction{inputs: inputs, output: output},
