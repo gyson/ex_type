@@ -152,7 +152,13 @@ defmodule ExType.Unification do
     context
   end
 
-  def unify_pattern(context, {:%{}, _, [{left, right}]}, %Type.Map{key: key, value: value}) do
+  def unify_pattern(context, {:%{}, _, args}, %Type.Map{key_value_pairs: key_value_pairs}) do
+    Enum.reduce(args, context, fn arg, context_acc
+        -> unify_pattern(context_acc, arg, %Type.Union{types: key_value_pairs})
+      end)
+  end
+
+  def unify_pattern(context, {left, right}, %Type.MapKeyValue{key_type: key, value_type: value}) do
     context
     |> unify_pattern(left, key)
     |> unify_pattern(right, value)

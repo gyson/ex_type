@@ -168,6 +168,8 @@ defmodule ExType.CustomEnv do
         path_name = "#{Macro.to_string(module)}.#{name}/#{arity}"
 
         try do
+          IO.inspect(fn_typespec)
+          IO.inspect(raw_fn)
           Typespec.match_typespec(map, fn_typespec, raw_fn)
           IO.puts("#{Emoji.one_test_pass()}  #{path_name}")
         catch
