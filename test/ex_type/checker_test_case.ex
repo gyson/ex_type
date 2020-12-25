@@ -32,4 +32,10 @@ defmodule ExType.CheckerTestCase do
         other
     end
   end
+
+  @spec test_case_3() :: integer()
+
+  def test_case_3 do
+    23
+  end
 end
