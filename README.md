@@ -5,7 +5,7 @@ A type checker for Elixir.
 ## Feature
 
 - gradual typing
-- type check for protocol and generic protocol
+- type check for protocols and generic protocols
 - type check with intersection and union types
 - type guards
 - type assertion
@@ -31,11 +31,11 @@ end
 
 To help ExType infer types, following rules are required:
 
-1. All public functions require explicit typespec.
+1. All public functions require explicit typespecs.
 
-2. All recursive functions require explicit typespec.
+2. All recursive functions require explicit typespecs.
 
-Basically, you do not need to add typespec for non-recursive private functions.
+Basically, you do not need to add a typespec for non-recursive private functions.
 
 ## Usage
 
@@ -59,9 +59,9 @@ There are some examples in `lib/ex_type/example/` directory.
 
 ## Status
 
-This project is still in very early stage with active development. You are likely to hit
-uncovered case when playing more complex code beyond example. Be free to submit github
-issue for bug report or any feedback.
+This project is still in a very early stage with active development. You are likely to hit
+uncovered cases when playing more complex code beyond the examples. Be free to submit [a github
+issue](https://github.com/gyson/ex_type/issues/new) for a bug report or any feedback.
 
 ## Roadmap
 
