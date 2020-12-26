@@ -304,7 +304,8 @@ defmodule ExType.Unification do
     Context.update_scope(context, var, %Type.Float{})
   end
 
-  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]}) when op in [:>, :<, :>=, :"=<", :"=:="] do
+  def unify_guard(context, {{:., _, [:erlang, op]}, _, [_, _]})
+      when op in [:>, :<, :>=, :"=<", :"=:="] do
     context
   end
 
