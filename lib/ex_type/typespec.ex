@@ -408,6 +408,13 @@ defmodule ExType.Typespec do
     eval_type({:any, meta, []}, context)
   end
 
+  # The `when x: var` pattern.
+  # See https://hexdocs.pm/elixir/typespecs.html#defining-a-specification)
+  # and https://github.com/gyson/ex_type/issues/25
+  def eval_type({:var, meta, []}, context) do
+    eval_type({:any, meta, []}, context)
+  end
+
   def eval_type({:arity, meta, []}, context) do
     # TODO: support range
     eval_type({:integer, meta, []}, context)
@@ -611,7 +618,7 @@ defmodule ExType.Typespec do
   end
 
   # local type
-  def eval_type({name, _meta, args}, {module, _} = context)
+  def eval_type({name, _meta, args} = type, {module, _} = context)
       when is_atom(name) and is_list(args) do
     case from_beam_type(module, name, length(args)) do
       {:ok, {^name, _, type_args}, type_body} ->
@@ -625,6 +632,14 @@ defmodule ExType.Typespec do
           |> Enum.into(%{})
 
         eval_type(type_body, {module, vars})
+      {:error, message} ->
+        Helper.inspect(%{
+          error: :eval_type,
+          type: type,
+          context: context,
+          message: message
+        })
+        Helper.throw(message: "Could not evaluate type")
     end
   end
 
