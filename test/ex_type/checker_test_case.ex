@@ -44,4 +44,21 @@ defmodule ExType.CheckerTestCase do
   def test_case_4(t) do
     t
   end
+
+  # Regression test for https://github.com/gyson/ex_type/issues/23
+  defmodule Nested do
+    @enforce_keys [:nested]
+    defstruct @enforce_keys
+
+    @type t(nested) :: %Nested{
+      nested: nested
+    }
+  end
+
+  # FIXME Would be great to have your input how you want to name test cases :)
+  @spec get_nested(Nested.t(nested)) :: nested when nested: any()
+
+  def get_nested(%Nested{nested: nested}) do
+    nested
+  end
 end
