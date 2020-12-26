@@ -111,12 +111,13 @@ defmodule ExType.CustomEnv do
     end
   end
 
-  def save_def(module, call, do: block) do
+  # Allow `do ... end` as well as `do ... rescue ... end`
+  def save_def(module, call, [{:do, _} | _] = block) do
     Module.register_attribute(module, :ex_type_def, accumulate: true, persist: true)
     Module.put_attribute(module, :ex_type_def, {call, block})
   end
 
-  def save_defp(module, call, do: block) do
+  def save_defp(module, call, [{:do, _} | _] = block) do
     Module.register_attribute(module, :ex_type_defp, accumulate: true, persist: true)
     Module.put_attribute(module, :ex_type_defp, {call, block})
   end
