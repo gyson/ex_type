@@ -632,6 +632,7 @@ defmodule ExType.Typespec do
           |> Enum.into(%{})
 
         eval_type(type_body, {module, vars})
+
       {:error, message} ->
         Helper.inspect(%{
           error: :eval_type,
@@ -639,6 +640,7 @@ defmodule ExType.Typespec do
           context: context,
           message: message
         })
+
         Helper.throw(message: "Could not evaluate type")
     end
   end

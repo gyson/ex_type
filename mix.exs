@@ -6,7 +6,7 @@ defmodule ExType.MixProject do
       app: :ex_type,
       version: "0.5.0",
       description: "A type checker for Elixir",
-      elixir: "~> 1.8",
+      elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(),
       start_permanent: Mix.env() == :prod,
       package: package(),
@@ -28,8 +28,8 @@ defmodule ExType.MixProject do
   defp deps do
     [
       {:ex_type_runtime, "~> 0.2.0"},
-      {:ex_doc, "~> 0.20.2", only: :dev, runtime: false},
-      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev], runtime: false}
+      {:ex_doc, "~> 0.23", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0", only: :dev, runtime: false}
     ]
   end
 
