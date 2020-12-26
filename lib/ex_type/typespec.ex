@@ -260,8 +260,7 @@ defmodule ExType.Typespec do
 
   def eval_type({:map, _, []}, _) do
     %Type.Map{
-      key: %Type.Any{},
-      value: %Type.Any{}
+      key_value_pairs: []
     }
   end
 
@@ -349,16 +348,19 @@ defmodule ExType.Typespec do
     case args do
       [] ->
         %Type.Map{
-          key: %Type.Any{},
-          value: %Type.Any{}
+          key_value_pairs: []
         }
 
       [{{header, _, [key_type]}, value_type}] when header in [:required, :optional] ->
         %Type.Map{
-          key: eval_type(key_type, context),
-          value: eval_type(value_type, context)
+          key_value_pairs: [
+            %Type.MapKeyValue{
+              key_type: eval_type(key_type, context),
+              value_type: eval_type(value_type, context)
+            }
+          ]
         }
-
+      # TODO Generalise for more key value pairs
       _ ->
         if Enum.all?(args, fn {key, _} -> is_atom(key) end) do
           types =
@@ -880,8 +882,16 @@ defmodule ExType.Typespec do
 
   def match_typespec(
         map,
-        %Type.Map{key: left_key_type, value: left_value_type},
-        %Type.Map{key: right_key_type, value: right_value_type}
+        %Type.Map{key_value_pairs: key_value_pairs_spec},
+        %Type.Map{key_value_pairs: key_value_pairs}
+      ) do
+    match_typespec(map, %Type.Union{types: key_value_pairs_spec}, %Type.Union{types: key_value_pairs})
+  end
+
+  def match_typespec(
+        map,
+        %Type.MapKeyValue{key_type: left_key_type, value_type: left_value_type},
+        %Type.MapKeyValue{key_type: right_key_type, value_type: right_value_type}
       ) do
     map
     |> match_typespec(left_key_type, right_key_type)
@@ -920,6 +930,8 @@ defmodule ExType.Typespec do
   end
 
   def match_typespec(_map, typespec, type) do
+    IO.inspect(typespec)
+    IO.inspect(type)
     typespec_string =
       typespec
       |> Typespecable.to_quote()

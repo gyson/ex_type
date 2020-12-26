@@ -216,22 +216,38 @@ defmodule ExType.Type do
   # Map.StructLike => it's map, not struct, but it has all atom as key,
   #                   so it's struct like map
 
+  defmodule MapKeyValue do
+    @moduledoc false
+
+    @type t :: %__MODULE__{
+            key_type: ExType.Type.t(),
+            value_type: ExType.Type.t()
+          }
+
+    defstruct [:key_type, :value_type]
+  end
+
   defmodule Map do
     @moduledoc false
 
     @type t :: %__MODULE__{
-            key: ExType.Type.t(),
-            value: ExType.Type.t()
+            key_value_pairs: ExType.MapKeyValue.t()
           }
 
-    defstruct [:key, :value]
+    defstruct [:key_value_pairs]
   end
 
   def map(key_type, value_type) do
-    Assert.is_type_struct!(key_type)
-    Assert.is_type_struct!(value_type)
+    map([%MapKeyValue{key_type: key_type, value_type: value_type}])
+  end
 
-    %Map{key: key_type, value: value_type}
+  def map(key_value_pairs) do
+    for %MapKeyValue{key_type: key_type, value_type: value_type} <- key_value_pairs do
+      Assert.is_type_struct!(key_type)
+      Assert.is_type_struct!(value_type)
+    end
+
+    %Map{key_value_pairs: key_value_pairs}
   end
 
   # Struct and TypedStruct ?

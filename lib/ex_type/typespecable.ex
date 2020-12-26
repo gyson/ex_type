@@ -264,20 +264,29 @@ defimpl Typespecable, for: Type.List do
   def get_protocol_path(_), do: {:ok, List}
 end
 
-defimpl Typespecable, for: Type.Map do
-  def to_quote(%Type.Map{key: key, value: value}) do
-    quoted_key = Typespecable.to_quote(key)
-    quoted_value = Typespecable.to_quote(value)
-
-    quote do
-      %{required(unquote(quoted_key)) => unquote(quoted_value)}
-    end
+defimpl Typespecable, for: Type.MapKeyValue do
+  def to_quote(%Type.MapKeyValue{key_type: key_type, value_type: value_type}) do
+    {Typespecable.to_quote(key_type), Typespecable.to_quote(value_type)}
   end
 
-  def resolve_vars(%Type.Map{key: key, value: value}, vars) do
+  def resolve_vars(%Type.MapKeyValue{key_type: key_type, value_type: value_type}, vars) do
+    %Type.MapKeyValue{
+      key_type: Typespecable.resolve_vars(key_type, vars),
+      value_type: Typespecable.resolve_vars(value_type, vars)
+    }
+  end
+
+  def get_protocol_path(_), do: {:ok, Tuple}
+end
+
+defimpl Typespecable, for: Type.Map do
+  def to_quote(%Type.Map{key_value_pairs: key_value_pairs}) do
+    {%{}, [], Enum.map(key_value_pairs, &Typespecable.to_quote/1)}
+  end
+
+  def resolve_vars(%Type.Map{key_value_pairs: key_value_pairs}, vars) do
     %Type.Map{
-      key: Typespecable.resolve_vars(key, vars),
-      value: Typespecable.resolve_vars(value, vars)
+      key_value_pairs: Enum.map(key_value_pairs, &Typespecable.resolve_vars(&1, vars))
     }
   end
 

@@ -22,10 +22,6 @@ defmodule ExType.Checker do
 
   @spec eval(Context.t(), any()) :: {Context.t(), Type.t()}
 
-  def eval(context, {:%{}, _, []}) do
-    {context, %Type.Map{key: %Type.Any{}, value: %Type.Any{}}}
-  end
-
   def eval(context, {:%{}, meta, args}) when is_list(args) do
     case Keyword.fetch(args, :__struct__) do
       # e.g. literal range
@@ -34,10 +30,22 @@ defmodule ExType.Checker do
         eval(context, {:%, meta, [struct, {:%{}, meta, Keyword.delete(args, :__struct__)}]})
 
       :error ->
-        case eval(context, args) do
-          {_, %Type.List{type: %Type.TypedTuple{types: [left, right]}}} ->
-            {context, %Type.Map{key: left, value: right}}
-        end
+        IO.inspect(args)
+        type = args
+          |> Enum.map(fn {key, value}->
+              IO.inspect({key, value})
+              case {eval(context, key), eval(context, value)} do
+                {{_, key_type}, {_, value_type}} ->
+                # {_, %Type.List{type: %Type.TypedTuple{types: [left, right]}}} ->
+                #   {context, %Type.Map{key: left, value: right}}
+                # {_, %Type.List{type: %Type.Union{types: types}}} ->
+                %Type.MapKeyValue{key_type: key_type, value_type: value_type}
+                |> IO.inspect()
+                #raise "Oh noes"
+              end
+            end)
+          |> Type.map()
+        {context, type}
     end
   end
 
@@ -64,6 +72,7 @@ defmodule ExType.Checker do
     types =
       args
       |> Enum.map(fn {key, value} ->
+        IO.inspect({key, value})
         {_, value_type} = eval(context, value)
         {key, value_type}
       end)
