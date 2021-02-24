@@ -52,7 +52,7 @@ defmodule ExType.Checker do
     {context, %Type.BitString{}}
   end
 
-  def eval(context, {:%, meta, [struct, {:%{}, _, args}]}) when is_atom(struct) do
+  def eval(context, {:%, meta, [struct, {:%{}, _, [{:|, _, [old_struct, args]}]}]}) when is_atom(struct) do
     if not Helper.is_struct(struct) do
       Helper.throw(
         message: "#{struct} is not struct",
@@ -61,6 +61,8 @@ defmodule ExType.Checker do
       )
     end
 
+    {_, %Type.Struct{struct: ^struct, types: old_types}} = eval(context, old_struct)
+
     types =
       args
       |> Enum.map(fn {key, value} ->
@@ -68,10 +70,17 @@ defmodule ExType.Checker do
         {key, value_type}
       end)
       |> Enum.into(%{})
-
     # TODO: check if all types match with typespec
 
-    {context, %Type.Struct{struct: struct, types: types}}
+    # %{some_struct | foo: bar} overwrites key foo, thus also its type
+    new_types = Map.merge(old_types, types)
+
+    {context, %Type.Struct{struct: struct, types: new_types}}
+  end
+
+  # %{foo => bar} is equivalent to %{%{} | foo => bar}
+  def eval(context, {:%, meta, [struct, {:%{}, meta, args}]}) do
+    eval(context, {:%, meta, [struct, {:%{}, meta, [{:|, meta, [%{}, args]}]}]})
   end
 
   # atom literal
