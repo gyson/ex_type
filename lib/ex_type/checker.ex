@@ -23,6 +23,7 @@ defmodule ExType.Checker do
   @spec eval(Context.t(), any()) :: {Context.t(), Type.t()}
 
   def eval(context, {:do, block}) do
+    # IO.inspect(block, label: "do block")
     eval(context, block)
   end
 
@@ -58,6 +59,7 @@ defmodule ExType.Checker do
   end
 
   def eval(context, block) when is_binary(block) do
+    IO.inspect(block, label: "bitstring")
     {context, %Type.BitString{}}
   end
 
@@ -70,6 +72,7 @@ defmodule ExType.Checker do
       )
     end
 
+    IO.inspect(old_struct, label: "old struct")
     {_, %Type.Struct{struct: ^struct, types: old_types}} = eval(context, old_struct)
 
     types =
@@ -89,6 +92,7 @@ defmodule ExType.Checker do
 
   # %{foo => bar} is equivalent to %{%{} | foo => bar}
   def eval(context, {:%, meta, [struct, {:%{}, meta, args}]}) do
+    IO.inspect({struct, meta, args}, label: "map expansion")
     eval(context, {:%, meta, [struct, {:%{}, meta, [{:|, meta, [%{}, args]}]}]})
   end
 
@@ -250,9 +254,12 @@ defmodule ExType.Checker do
       when is_atom(module) and is_atom(name) do
     args_types =
       Enum.map(args, fn arg ->
+        IO.inspect(arg, label: "Remote function call arg")
         {_, type} = eval(context, arg)
+          |> IO.inspect(label: "Remote function call result")
         type
       end)
+      |> IO.inspect(label: "Remote function call args_types")
 
     case Typespec.eval_spec(module, name, args_types) do
       {:ok, output} ->
@@ -264,9 +271,11 @@ defmodule ExType.Checker do
           name == :exception and length(args) == 1 and Helper.is_exception(module) ->
             expr =
               quote(do: %unquote(module){message: ""})
+              |> IO.inspect(label: "Remote function call expr")
               |> :elixir_expand.expand(__ENV__)
               |> elem(0)
 
+            IO.inspect(expr, label: "Handle exception without spec")
             eval(context, expr)
 
           true ->
