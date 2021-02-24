@@ -606,12 +606,7 @@ defmodule ExType.Typespec do
   # type variable
   def eval_type({name, meta, atom}, {_, vars} = context) when is_atom(name) and is_atom(atom) do
     case vars do
-      %{^name => %Type.SpecVariable{} = type} ->
-        type
-
       %{^name => type} -> type
-      # %{^name => raw} ->
-      #   eval_type(raw, context)
 
       _ ->
         eval_type({name, meta, []}, context)
