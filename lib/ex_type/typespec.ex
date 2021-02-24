@@ -609,8 +609,9 @@ defmodule ExType.Typespec do
       %{^name => %Type.SpecVariable{} = type} ->
         type
 
-      %{^name => raw} ->
-        eval_type(raw, context)
+      %{^name => type} -> type
+      # %{^name => raw} ->
+      #   eval_type(raw, context)
 
       _ ->
         eval_type({name, meta, []}, context)
