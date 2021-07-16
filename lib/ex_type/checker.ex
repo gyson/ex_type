@@ -23,7 +23,7 @@ defmodule ExType.Checker do
   @spec eval(Context.t(), any()) :: {Context.t(), Type.t()}
 
   def eval(context, {:do, block}) do
-    # IO.inspect(block, label: "do block")
+    IO.inspect(block, label: "do block")
     eval(context, block)
   end
 
@@ -269,6 +269,7 @@ defmodule ExType.Checker do
         cond do
           # handle exception without spec
           name == :exception and length(args) == 1 and Helper.is_exception(module) ->
+            IO.inspect(module, label: "Remote function call module")
             expr =
               quote(do: %unquote(module){message: ""})
               |> IO.inspect(label: "Remote function call expr")
