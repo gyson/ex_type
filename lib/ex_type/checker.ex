@@ -277,7 +277,7 @@ defmodule ExType.Checker do
               |> elem(0)
 
             IO.inspect(expr, label: "Handle exception without spec")
-            eval(context, expr)
+            {context, %Type.Any{}}
 
           true ->
             type_error =
