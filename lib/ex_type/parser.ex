@@ -70,26 +70,34 @@ defmodule ExType.Parser do
 
     expanded_body =
       block
-      |> Macro.postwalk(fn
-        # support T.inspect
-        {:., m1, [{:__aliases__, m2, [:T]}, :inspect]} ->
-          {:., m1, [{:__aliases__, m2, [:ExType, :T, :TypeCheck]}, :inspect]}
-
-        # support T.assert
-        {{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]} ->
-          case arg do
-            {operator, _, [left, right]} when operator in [:==, :"::", :<, :>] ->
-              {{:., m1, [{:__aliases__, m2, [:ExType, :T, :TypeCheck]}, :assert]}, m3,
-               [operator, left, Macro.escape(right)]}
-          end
-
-        code ->
-          code
+      |> Enum.map(fn {block_kind, block_part} ->
+          {block_kind,
+            block_part
+              |> Macro.postwalk(&walk_support_inspect_assert/1)
+              |> replace_module_macro(module_name)
+              |> expand_all(updated_env)
+          }
       end)
-      |> replace_module_macro(module_name)
-      |> expand_all(updated_env)
 
     {name, expanded_args, expanded_guard, expanded_body}
+  end
+
+  # support T.inspect
+  defp walk_support_inspect_assert({:., m1, [{:__aliases__, m2, [:T]}, :inspect]}) do
+    {:., m1, [{:__aliases__, m2, [:ExType, :T, :TypeCheck]}, :inspect]}
+  end
+
+  # support T.assert
+  defp walk_support_inspect_assert({{:., m1, [{:__aliases__, m2, [:T]}, :assert]}, m3, [arg]}) do
+    case arg do
+      {operator, _, [left, right]} when operator in [:==, :"::", :<, :>] ->
+        {{:., m1, [{:__aliases__, m2, [:ExType, :T, :TypeCheck]}, :assert]}, m3,
+          [operator, left, Macro.escape(right)]}
+    end
+  end
+
+  defp walk_support_inspect_assert(code) do
+    code
   end
 
   # replace __MODULLE__ with actual module name, removed "ExType.Module" prefix
