@@ -230,11 +230,11 @@ defmodule ExType.Unification do
         context,
         {:%, _, [struct, {:%{}, _, args}]},
         %ExType.Type.Struct{
-          struct: struct,
+          struct: struct_alias,
           types: types
         }
       )
-      when is_atom(struct) and is_list(args) do
+      when is_atom(struct) and is_atom(struct_alias) and is_list(args) do
     Enum.reduce(args, context, fn {key, value}, context when is_atom(key) ->
       unify_pattern(context, value, Map.fetch!(types, key))
     end)

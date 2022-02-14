@@ -1,6 +1,6 @@
 name: Elixir CI
 
-on: push
+on: pull_request
 
 jobs:
   test:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: elixir:1.11
+      image: elixir
 
     steps:
     - uses: actions/checkout@v2
@@ -17,7 +17,7 @@ jobs:
         mix local.rebar --force
         mix local.hex --force
         mix deps.get
-    - name: Check Format
-      run: mix format --check-formatted
+    - name: Compile
+      run: mix compile
     - name: Run Tests
       run: mix test

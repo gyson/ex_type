@@ -101,7 +101,15 @@ defmodule ExType.CustomEnv do
   # create new module with name: ExType.Module.XXX
   defmacro defmodule(alias, do: block) do
     {:__aliases__, meta, tokens} = alias
-    new_alias = {:__aliases__, meta, [:ExType, :Module | tokens]}
+
+    # Don't move nested modules into custom env (https://github.com/gyson/ex_type/issues/23)
+    env = __CALLER__
+    new_alias_prefix = case env.module do
+      nil -> [:ExType, :Module]
+      _ -> []
+    end
+
+    new_alias = {:__aliases__, meta, new_alias_prefix ++ tokens}
 
     quote do
       Kernel.defmodule unquote(new_alias) do
