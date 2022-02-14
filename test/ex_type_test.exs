@@ -1,4 +1,8 @@
 defmodule ExTypeTest do
+  @moduledoc """
+  Test whether ex_type can successfully typecheck files without crashing.
+  """
+
   use ExUnit.Case
   import ExUnit.CaptureIO
 
