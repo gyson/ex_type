@@ -845,10 +845,8 @@ defmodule ExType.Typespec do
 
     mod = Module.concat([module, name])
 
-    case Code.ensure_compiled?(mod) do
-      true ->
-        map
-    end
+    Code.ensure_compiled!(mod)
+    map
   end
 
   def match_typespec(
