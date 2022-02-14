@@ -14,6 +14,7 @@ defmodule ExTypeTest do
     for file <- Path.wildcard("#{__DIR__}/ex_type/**/*_test_case.ex") do
       result = capture_io(fn -> ExType.check(file) end)
       assert String.contains?(result, [Emoji.one_test_pass()])
+      refute String.contains?(result, [Emoji.one_test_fail()])
     end
   end
 end
