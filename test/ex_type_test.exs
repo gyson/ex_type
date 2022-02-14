@@ -10,11 +10,19 @@ defmodule ExTypeTest do
 
   doctest ExType
 
-  test "typespec/**/*_test_case.ex" do
+  test "typespec test cases" do
     for file <- Path.wildcard("#{__DIR__}/ex_type/**/*_test_case.ex") do
       result = capture_io(fn -> ExType.check(file) end)
       assert String.contains?(result, [Emoji.one_test_pass()])
       refute String.contains?(result, [Emoji.one_test_fail()])
+    end
+  end
+
+  test "typespec failure cases" do
+    for file <- Path.wildcard("#{__DIR__}/ex_type/**/*_failure_case.ex") do
+      result = capture_io(fn -> ExType.check(file) end)
+      refute String.contains?(result, [Emoji.one_test_pass()])
+      assert String.contains?(result, [Emoji.one_test_fail()])
     end
   end
 end
