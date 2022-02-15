@@ -1,4 +1,4 @@
-defmodule ExType.CheckerTestCase do
+defmodule TypeChecks.CheckerTestCase do
   # See https://github.com/gyson/ex_type/issues/47
   _currently_failing_tests = """
   @spec test_case_1({:ok, integer()} | :error) :: any()
@@ -33,30 +33,8 @@ defmodule ExType.CheckerTestCase do
   end
   """
 
-  @spec test_case_3() :: integer()
-
-  def test_case_3 do
-    23
-  end
-
-  @spec test_case_4(t) :: t when t: var
-
-  def test_case_4(t) do
-    t
-  end
-
-  # Regression test for https://github.com/gyson/ex_type/issues/23
-  defmodule Nested do
-    @enforce_keys [:nested]
-    defstruct @enforce_keys
-
-    @type t(nested) :: %Nested{
-      nested: nested
-    }
-  end
-
-  @spec get_nested(Nested.t(nested)) :: nested when nested: any()
-  def get_nested(%Nested{nested: nested}) do
-    nested
+  @spec identity_int(integer()) :: integer()
+  def identity_int(x) do
+    x
   end
 end
