@@ -63,17 +63,22 @@ defmodule ExType.Checker do
     {context, %Type.BitString{}}
   end
 
-  def eval(context, {:%, meta, [struct, {:%{}, _, [{:|, _, [old_struct, args]}]}]}) when is_atom(struct) do
-    if not Helper.is_struct(struct) do
+  def eval(context, {:%, meta, [struct_module, {:%{}, _, [{:|, _, [old_struct_value, args]}]}]}) when is_atom(struct_module) do
+    if not Helper.is_struct(struct_module) do
       Helper.throw(
-        message: "#{struct} is not struct",
+        message: "#{struct_module} is not struct",
         context: context,
         meta: meta
       )
     end
 
-    IO.inspect(old_struct, label: "old struct")
-    {_, %Type.Struct{struct: ^struct, types: old_types}} = eval(context, old_struct)
+    IO.inspect(args, label: "args")
+    IO.inspect(struct_module, label: "struct")
+    IO.inspect(old_struct_value, label: "old struct")
+    # {_, %Type.Struct{struct: ^struct, types: old_types}} = eval(context, old_struct)
+    {_, %Type.Struct{types: old_types}} = eval(context, {old_struct_value, meta, args})
+      |> IO.inspect()
+
 
     types =
       args
@@ -87,7 +92,7 @@ defmodule ExType.Checker do
     # %{some_struct | foo: bar} overwrites key foo, thus also its type
     new_types = Map.merge(old_types, types)
 
-    {context, %Type.Struct{struct: struct, types: new_types}}
+    {context, %Type.Struct{struct: struct_module, types: new_types}}
   end
 
   # %{foo => bar} is equivalent to %{%{} | foo => bar}
