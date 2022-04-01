@@ -809,9 +809,19 @@ defmodule ExType.Typespec do
           end
           |> case do
             {:ok, new_fn_context} ->
-              {_, result_type} = ExType.Checker.eval(new_fn_context, body)
-
-              [result_type]
+              case body do
+                [do: block] ->
+                  {_context, type} = ExType.Checker.eval(new_fn_context, {:do, block})
+                  [type]
+                # For `do ... rescue ... end`-blocks, the result type can either be the first or the second part
+                [do: block_try, rescue: block_rescue] ->
+                  {_context, type_try} = ExType.Checker.eval(new_fn_context, {:do, block_try})
+                  {_context, type_rescue} = ExType.Checker.eval(new_fn_context, {:rescue, block_rescue})
+                  [Type.union([type_try, type_rescue])]
+                block ->
+                  {_context, type} = ExType.Checker.eval(new_fn_context, block)
+                  [type]
+              end
 
             :not_match ->
               []
@@ -845,10 +855,8 @@ defmodule ExType.Typespec do
 
     mod = Module.concat([module, name])
 
-    case Code.ensure_compiled?(mod) do
-      true ->
-        map
-    end
+    Code.ensure_compiled!(mod)
+    map
   end
 
   def match_typespec(

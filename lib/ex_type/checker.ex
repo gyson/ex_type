@@ -22,6 +22,16 @@ defmodule ExType.Checker do
 
   @spec eval(Context.t(), any()) :: {Context.t(), Type.t()}
 
+  def eval(context, {:do, block}) do
+    IO.inspect(block, label: "do block")
+    eval(context, block)
+  end
+
+  # handle rescue ... end
+  def eval(context, {:rescue, args}) do
+    block_of_bindings(context, args)
+  end
+
   def eval(context, {:%{}, _, []}) do
     {context, %Type.Map{key: %Type.Any{}, value: %Type.Any{}}}
   end
@@ -49,17 +59,26 @@ defmodule ExType.Checker do
   end
 
   def eval(context, block) when is_binary(block) do
+    IO.inspect(block, label: "bitstring")
     {context, %Type.BitString{}}
   end
 
-  def eval(context, {:%, meta, [struct, {:%{}, _, args}]}) when is_atom(struct) do
-    if not Helper.is_struct(struct) do
+  def eval(context, {:%, meta, [struct_module, {:%{}, _, [{:|, _, [old_struct_value, args]}]}]}) when is_atom(struct_module) do
+    if not Helper.is_struct(struct_module) do
       Helper.throw(
-        message: "#{struct} is not struct",
+        message: "#{struct_module} is not struct",
         context: context,
         meta: meta
       )
     end
+
+    IO.inspect(args, label: "args")
+    IO.inspect(struct_module, label: "struct")
+    IO.inspect(old_struct_value, label: "old struct")
+    # {_, %Type.Struct{struct: ^struct, types: old_types}} = eval(context, old_struct)
+    {_, %Type.Struct{types: old_types}} = eval(context, {old_struct_value, meta, args})
+      |> IO.inspect()
+
 
     types =
       args
@@ -68,10 +87,18 @@ defmodule ExType.Checker do
         {key, value_type}
       end)
       |> Enum.into(%{})
-
     # TODO: check if all types match with typespec
 
-    {context, %Type.Struct{struct: struct, types: types}}
+    # %{some_struct | foo: bar} overwrites key foo, thus also its type
+    new_types = Map.merge(old_types, types)
+
+    {context, %Type.Struct{struct: struct_module, types: new_types}}
+  end
+
+  # %{foo => bar} is equivalent to %{%{} | foo => bar}
+  def eval(context, {:%, meta, [struct, {:%{}, meta, args}]}) do
+    IO.inspect({struct, meta, args}, label: "map expansion")
+    eval(context, {:%, meta, [struct, {:%{}, meta, [{:|, meta, [%{}, args]}]}]})
   end
 
   # atom literal
@@ -232,9 +259,12 @@ defmodule ExType.Checker do
       when is_atom(module) and is_atom(name) do
     args_types =
       Enum.map(args, fn arg ->
+        IO.inspect(arg, label: "Remote function call arg")
         {_, type} = eval(context, arg)
+          |> IO.inspect(label: "Remote function call result")
         type
       end)
+      |> IO.inspect(label: "Remote function call args_types")
 
     case Typespec.eval_spec(module, name, args_types) do
       {:ok, output} ->
@@ -244,12 +274,15 @@ defmodule ExType.Checker do
         cond do
           # handle exception without spec
           name == :exception and length(args) == 1 and Helper.is_exception(module) ->
+            IO.inspect(module, label: "Remote function call module")
             expr =
               quote(do: %unquote(module){message: ""})
+              |> IO.inspect(label: "Remote function call expr")
               |> :elixir_expand.expand(__ENV__)
               |> elem(0)
 
-            eval(context, expr)
+            IO.inspect(expr, label: "Handle exception without spec")
+            {context, %Type.Any{}}
 
           true ->
             type_error =
@@ -439,25 +472,7 @@ defmodule ExType.Checker do
 
   # handle receive do ... end
   def eval(context, {:receive, _, [[do: args]]}) do
-    t =
-      for {:->, _, [[left], right]} <- args do
-        new_context =
-          case left do
-            {:when, _, [when_left, when_right]} ->
-              context
-              |> Unification.unify_pattern(when_left, %Type.Any{})
-              |> Unification.unify_guard(when_right)
-
-            _ ->
-              Unification.unify_pattern(context, left, %Type.Any{})
-          end
-
-        {_, type} = eval(new_context, right)
-        type
-      end
-      |> Typespec.union_types()
-
-    {context, t}
+    block_of_bindings(context, args)
   end
 
   # function call, e.g. 1 + 1
@@ -572,6 +587,27 @@ defmodule ExType.Checker do
       context: context,
       meta: meta
     )
+  end
+
+  defp block_of_bindings(context, args) do
+    t = for {:->, _, [[left], right]} <- args do
+        new_context =
+          case left do
+            {:when, _, [when_left, when_right]} ->
+              context
+              |> Unification.unify_pattern(when_left, %Type.Any{})
+              |> Unification.unify_guard(when_right)
+
+            _ ->
+              Unification.unify_pattern(context, left, %Type.Any{})
+          end
+
+        {_, type} = eval(new_context, right)
+        type
+      end
+      |> Typespec.union_types()
+
+    {context, t}
   end
 
   def exact_pattern_match(atom, %Type.Atom{literal: true, value: atom}) when is_atom(atom) do
