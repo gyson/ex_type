@@ -22,6 +22,15 @@ defmodule ExType.Checker do
 
   @spec eval(Context.t(), any()) :: {Context.t(), Type.t()}
 
+  def eval(context, {:do, block}) do
+    eval(context, block)
+  end
+
+  # handle rescue ... end
+  def eval(context, {:rescue, args}) do
+    block_of_bindings(context, args)
+  end
+
   def eval(context, {:%{}, _, []}) do
     {context, %Type.Map{key: %Type.Any{}, value: %Type.Any{}}}
   end
@@ -439,25 +448,7 @@ defmodule ExType.Checker do
 
   # handle receive do ... end
   def eval(context, {:receive, _, [[do: args]]}) do
-    t =
-      for {:->, _, [[left], right]} <- args do
-        new_context =
-          case left do
-            {:when, _, [when_left, when_right]} ->
-              context
-              |> Unification.unify_pattern(when_left, %Type.Any{})
-              |> Unification.unify_guard(when_right)
-
-            _ ->
-              Unification.unify_pattern(context, left, %Type.Any{})
-          end
-
-        {_, type} = eval(new_context, right)
-        type
-      end
-      |> Typespec.union_types()
-
-    {context, t}
+    block_of_bindings(context, args)
   end
 
   # function call, e.g. 1 + 1
@@ -572,6 +563,27 @@ defmodule ExType.Checker do
       context: context,
       meta: meta
     )
+  end
+
+  defp block_of_bindings(context, args) do
+    t = for {:->, _, [[left], right]} <- args do
+        new_context =
+          case left do
+            {:when, _, [when_left, when_right]} ->
+              context
+              |> Unification.unify_pattern(when_left, %Type.Any{})
+              |> Unification.unify_guard(when_right)
+
+            _ ->
+              Unification.unify_pattern(context, left, %Type.Any{})
+          end
+
+        {_, type} = eval(new_context, right)
+        type
+      end
+      |> Typespec.union_types()
+
+    {context, t}
   end
 
   def exact_pattern_match(atom, %Type.Atom{literal: true, value: atom}) when is_atom(atom) do

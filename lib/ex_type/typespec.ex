@@ -779,18 +779,25 @@ defmodule ExType.Typespec do
     map
   end
 
+  def match_typespec(map, %Type.Atom{literal: true, value: atom_spec}, %Type.Atom{literal: true, value: atom}) do
+    if atom_spec == atom do
+      map
+    else
+      Helper.throw(
+        message: "Cannot match atoms (#{atom_spec} != #{atom})"
+      )
+    end
+  end
+
   def match_typespec(
         map,
         %Type.TypedFunction{inputs: inputs, output: output},
         %Type.RawFunction{arity: arity, clauses: clauses, context: fn_context, meta: fn_meta}
       )
       when length(inputs) == arity do
-    final_result_type =
-      inputs
-      # need to resolve inputs ? then, make sure it's concrete type ?
+    input_types = inputs
       |> Enum.map(&Typespecable.resolve_vars(&1, map))
-      |> ArgumentExpander.expand_union_types()
-      |> Enum.flat_map(fn input_types ->
+    final_result_type =
         clauses
         |> Enum.flat_map(fn {args, guard, body} ->
           try do
@@ -809,33 +816,40 @@ defmodule ExType.Typespec do
           end
           |> case do
             {:ok, new_fn_context} ->
-              {_, result_type} = ExType.Checker.eval(new_fn_context, body)
-
-              [result_type]
+              case body do
+                [do: block] ->
+                  {_context, type} = ExType.Checker.eval(new_fn_context, {:do, block})
+                  [type]
+                # For `do ... rescue ... end`-blocks, the result type can either be the first or the second part
+                [do: block_try, rescue: block_rescue] ->
+                  {_context, type_try} = ExType.Checker.eval(new_fn_context, {:do, block_try})
+                  {_context, type_rescue} = ExType.Checker.eval(new_fn_context, {:rescue, block_rescue})
+                  [Type.union([type_try, type_rescue])]
+                block ->
+                  {_context, type} = ExType.Checker.eval(new_fn_context, block)
+                  [type]
+              end
 
             :not_match ->
               []
           end
         end)
-        |> case do
-          [] ->
-            # the input types does not match any pattern
-            input_type_string =
-              input_types
-              |> Enum.map(fn t -> Typespecable.to_quote(t) |> Macro.to_string() end)
-              |> Enum.join(", ")
+      |> case do
+        [] ->
+          # the input types does not match any pattern
+          input_type_string =
+            input_types
+            |> Enum.map(fn t -> Typespecable.to_quote(t) |> Macro.to_string() end)
+            |> Enum.join(", ")
 
-            Helper.throw(
-              message: "Cannot match input types (#{input_type_string})",
-              context: fn_context,
-              meta: fn_meta
-            )
+          Helper.throw(
+            message: "Cannot match input types (#{input_type_string})",
+            context: fn_context,
+            meta: fn_meta
+          )
 
-          types ->
-            types
-        end
-      end)
-      |> Typespec.union_types()
+        types -> Typespec.union_types(types)
+      end
 
     match_typespec(map, output, final_result_type)
   end
@@ -845,10 +859,8 @@ defmodule ExType.Typespec do
 
     mod = Module.concat([module, name])
 
-    case Code.ensure_compiled?(mod) do
-      true ->
-        map
-    end
+    Code.ensure_compiled!(mod)
+    map
   end
 
   def match_typespec(

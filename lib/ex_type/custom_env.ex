@@ -101,7 +101,22 @@ defmodule ExType.CustomEnv do
   # create new module with name: ExType.Module.XXX
   defmacro defmodule(alias, do: block) do
     {:__aliases__, meta, tokens} = alias
-    new_alias = {:__aliases__, meta, [:ExType, :Module | tokens]}
+
+    # Don't move nested modules into custom env (https://github.com/gyson/ex_type/issues/23)
+    env = __CALLER__
+    new_alias_prefix = case env.module do
+      nil -> [:ExType, :Module]
+      _ -> []
+    end
+
+    new_alias = {:__aliases__, meta, new_alias_prefix ++ tokens}
+
+    # Manually expand `alias __MODULE__`, see https://github.com/gyson/ex_type/issues/27
+    block = block
+      |> Macro.prewalk(fn
+          {:alias, meta_alias, [{:__MODULE__, meta_module, nil}]} -> {:alias, meta_alias, [{:__aliases__, meta_module, tokens}]}
+          token -> token
+        end)
 
     quote do
       Kernel.defmodule unquote(new_alias) do
@@ -111,12 +126,13 @@ defmodule ExType.CustomEnv do
     end
   end
 
-  def save_def(module, call, do: block) do
+  # Allow `do ... end` as well as `do ... rescue ... end`
+  def save_def(module, call, [{:do, _} | _] = block) do
     Module.register_attribute(module, :ex_type_def, accumulate: true, persist: true)
     Module.put_attribute(module, :ex_type_def, {call, block})
   end
 
-  def save_defp(module, call, do: block) do
+  def save_defp(module, call, [{:do, _} | _] = block) do
     Module.register_attribute(module, :ex_type_defp, accumulate: true, persist: true)
     Module.put_attribute(module, :ex_type_defp, {call, block})
   end
