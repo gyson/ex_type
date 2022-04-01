@@ -4,8 +4,8 @@ defmodule TypeChecks.Struct.Update do
   end
 
   @spec foo(t) :: %Foo{ foo: t } when t: any()
-
   def foo(t) do
-    %Foo{foo(23) | foo: t}
+    value = %Foo{}
+    %Foo{value | foo: t}
   end
 end
