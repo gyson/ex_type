@@ -1,9 +1,9 @@
-defmodule TypeFailures.Atoms.Case do
+defmodule TypeChecks.Atoms.Case do
   @spec wrong_atom(integer() | :foo) :: :bar
   def wrong_atom(x) do
     case x do
       :foo -> :bar
-      _ -> :baz
+      _ -> :bar
     end
   end
 end
